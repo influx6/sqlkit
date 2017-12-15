@@ -170,6 +170,7 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 				gen.Import("github.com/influx6/faux/db/sql", ""),
 				gen.Import("github.com/influx6/faux/context", ""),
 				gen.Import("github.com/influx6/faux/metrics", ""),
+				gen.Import("github.com/influx6/faux/db/sql/tables", ""),
 				gen.Import(str.Path, ""),
 			),
 			gen.Block(
