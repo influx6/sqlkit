@@ -18,16 +18,20 @@ Running the following commands instantly generates all necessary files and packa
 
 ## How It works
 
-You annotate any giving struct with `@sqlapi` which marks giving struct has a target for code generation. It also respects `@associates` annotation which gives extra information to the generator for the following data:
+You annotate any giving struct with `@sqlapi` which marks giving struct has a target for code generation. 
 
-1. What struct to be used as representing a new user.
-2. What struct contain information for representing a updated user.
+It also respects `@associates` annotation which gives extra information to the generator for the following data:
+
+1. What struct to be used as representing a new struct type.
+2. What struct contain information for representing the updated struct type.
 
 Sample below:
 
 ```go
 // User is a type defining the given user related fields for a given.
-// @sqlapi
+//@sqlapi
+//@associates(@sqlapi, New, NewUser)
+//@associates(@sqlapi, Update, UpdateUser)
 type User struct {
 	Username      string    `json:"username"`
 	PublicID      string    `json:"public_id"`
