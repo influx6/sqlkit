@@ -1,0 +1,12 @@
+var (
+    // {{.Struct.Object.Name}}Table defines the table migration meta-data which 
+    // is used to generate the appropriate CREATE TABLE sql statement for generating 
+    // associated sql table.
+    // TODO: Update with field name types and index.
+    {{.Struct.Object.Name}}Migration = Migration{
+        Timestamped: true, 
+        TableName: "{{toLower .Struct.Object.Name}}_table",
+        Indexes: []IndexMigration{},
+        Fields: []FieldMigration{},
+    }
+)
