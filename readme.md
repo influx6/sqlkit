@@ -1,11 +1,11 @@
-MgoKit
+SqlKit
 --------
-Mgokit implements a code generator which automatically generates go packages for mongodb implementations for annotated structs.
+Sqlkit implements a code generator which automatically generates go packages for sql db implementations for annotated structs.
 
 ## Install
 
 ```
-go get -u github.com/gokit/mgokit
+go get -u github.com/gokit/sqlkit
 ```
 
 ## Usage
@@ -13,27 +13,12 @@ go get -u github.com/gokit/mgokit
 Running the following commands instantly generates all necessary files and packages for giving code gen.
 
 ```go
-> mgokit generate
+> sqlkit generate
 ```
 
 ## How It works
 
-### Package Annotation
-
-You annotate a package with the `@mongo` annotation which generates a basic package to interact with an underline mongodb database.
-
-Sample below:
-
-```go
-// Package box does ....
-//@mongo
-package box
-
-```
-
-### Struct Annotation
-
-You annotate any giving struct with `@mongoapi` which marks giving struct has a target for code generation. It also respects `@associates` annotation which gives extra information to the generator for the following data:
+You annotate any giving struct with `@sqlapi` which marks giving struct has a target for code generation. It also respects `@associates` annotation which gives extra information to the generator for the following data:
 
 1. What struct to be used as representing a new user.
 2. What struct contain information for representing a updated user.
@@ -42,7 +27,7 @@ Sample below:
 
 ```go
 // User is a type defining the given user related fields for a given.
-// @mongoapi
+// @sqlapi
 type User struct {
 	Username      string    `json:"username"`
 	PublicID      string    `json:"public_id"`
