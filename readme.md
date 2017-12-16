@@ -1,5 +1,7 @@
 SqlKit
 --------
+[![Go Report Card](https://goreportcard.com/badge/github.com/gokit/sqlkit)](https://goreportcard.com/report/github.com/gokit/sqlkit)
+
 Sqlkit implements a code generator which automatically generates go packages for sql db implementations for annotated structs.
 
 ## Install
