@@ -2,14 +2,14 @@
 type mapFields map[string]interface{}
 
 // Fields returns the map itself and provides a method to match the sql.TableField interface.
-func (m mapFields) Fields() map[string]interface{} {
-    return m
+func (m mapFields) Fields() (map[string]interface{}, error) {
+    return m, nil
 }
 
 // {{.Struct.Object.Name}}Fields defines an interface which exposes method to return a map of all
 // attributes associated with the defined structure as decided by the structure.
 type {{.Struct.Object.Name}}Fields  interface {
-	Fields() map[string]interface{}
+	Fields() (map[string]interface{}, error)
 }
 
 // {{.Struct.Object.Name}}Consumer defines an interface which accepts a map of data which will be consumed
@@ -78,14 +78,21 @@ func (mdb *{{.Struct.Object.Name}}DB) Create(ctx context.Context, elem {{.Struct
 				return err
     }
 
-    if fields, ok := interface{}(elem).({{.Struct.Object.Name}}Fields); ok {
-        if err := mdb.dx.Save(mdb.table, mapFields(fields.Fields())); err != nil {
-            mdb.metrics.Emit(metrics.Errorf("Failed to create {{.Struct.Object.Name}} record"),metrics.WithFields("table", mdb.col),metrics.WithFields("elem", elem),metrics.WithFields("error", err.Error()))
+    if fielder, ok := interface{}(elem).({{.Struct.Object.Name}}Fields); ok {
+        if err := mdb.dx.Save(mdb.table, fielder); err != nil {
+            mdb.metrics.Emit(
+                metrics.Errorf("Failed to create {{.Struct.Object.Name}} record"),
+                metrics.WithFields("table", mdb.col),
+                metrics.WithFields("elem", elem),
+                metrics.WithFields("error", err.Error()),
+            )
 
             return err
         }
 
-        mdb.metrics.Emit(metrics.Info("Create record"),metrics.WithFields("table", mdb.col),metrics.WithFields("elem", elem))
+        mdb.metrics.Emit(metrics.Info("Create record"),
+        metrics.WithFields("table", mdb.col),
+        metrics.WithFields("elem", elem))
 
         return nil
     }
@@ -289,10 +296,10 @@ func (mdb *{{.Struct.Object.Name}}DB) Update(ctx context.Context, publicID strin
         return err
     }
 
-    var data mapFields
+    var data {{.Struct.Object.Name}}Fields
 
     if fields, ok := interface{}(elem).({{.Struct.Object.Name}}Fields); ok {
-        data = mapFields(fields.Fields())
+        data = fields
     }else{
         data = mapFields({{ mapoutFields .CreateAction "elem" "bson" "json" }})
     }
