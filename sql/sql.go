@@ -37,6 +37,7 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 			gen.Name(fmt.Sprintf("%s_test", packageName)),
 			gen.Imports(
 				gen.Import("os", ""),
+				gen.Import("time", ""),
 				gen.Import("testing", ""),
 				gen.Import("encoding/json", ""),
 				gen.Import("github.com/influx6/faux/db", ""),
@@ -127,34 +128,6 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 		),
 	)
 
-	// sqlMigrationsGen := gen.Block(
-	// 	gen.Package(
-	// 		gen.Name(packageName),
-	// 	),
-	// 	gen.Block(
-	// 		gen.SourceTextWith(
-	// 			string(static.MustReadFile("sql-api-migration.tml", true)),
-	// 			gen.ToTemplateFuncs(
-	// 				ast.ASTTemplatFuncs,
-	// 				template.FuncMap{
-	// 					"hasFunc": ast.HasFunctionFor(pkgDeclr),
-	// 				},
-	// 			),
-	// 			struct {
-	// 				Struct       ast.StructDeclaration
-	// 				CreateAction ast.StructDeclaration
-	// 				UpdateAction ast.StructDeclaration
-	// 				Pkg          *ast.PackageDeclaration
-	// 			}{
-	// 				Struct:       str,
-	// 				Pkg:          &pkgDeclr,
-	// 				CreateAction: createAction,
-	// 				UpdateAction: updateAction,
-	// 			},
-	// 		),
-	// 	),
-	// )
-
 	sqlGen := gen.Block(
 		gen.Commentary(
 			gen.SourceText(`Package `+packageName+` provides a auto-generated package which contains a sql CRUD API for the specific {{.Object.Name}} struct in package {{.Package}}.`, str),
@@ -163,13 +136,12 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 			gen.Name(packageName),
 			gen.Imports(
 				gen.Import("fmt", ""),
-				gen.Import("bytes", ""),
-				gen.Import("strings", ""),
-				gen.Import("encoding/json", ""),
+				gen.Import("errors", ""),
+				gen.Import("github.com/jmoiron/sqlx", ""),
 				gen.Import("github.com/influx6/faux/db", ""),
-				gen.Import("github.com/influx6/faux/db/sql", ""),
 				gen.Import("github.com/influx6/faux/context", ""),
 				gen.Import("github.com/influx6/faux/metrics", ""),
+				gen.Import("github.com/influx6/faux/db/sql", ""),
 				gen.Import("github.com/influx6/faux/db/sql/tables", ""),
 				gen.Import(str.Path, ""),
 			),
@@ -219,11 +191,5 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 			FileName: fmt.Sprintf("%s.go", packageName),
 			Dir:      packageName,
 		},
-		// {
-		// 	DontOverride: true,
-		// 	Writer:       fmtwriter.New(sqlMigrationsGen, true, true),
-		// 	FileName:     fmt.Sprintf("%s_migration.go", packageName),
-		// 	Dir:          packageName,
-		// },
 	}, nil
 }
