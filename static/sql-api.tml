@@ -230,13 +230,13 @@ func (mdb *{{.Struct.Object.Name}}DB) Update(ctx context.Context, publicID strin
 
     {{ if ( hasFunc .Struct "Fields"  ) }}
         if err := mdb.dx.Update(mdb.table, elem, "{{$ptag.Value}}", publicID); err != nil {
-            mdb.metrics.Emit(metrics.Errorf("Failed to update {{.Struct.Object.Name}} record"),metrics.With("query", data),metrics.With("table", mdb.col),metrics.With("{{$ptag.Value}}", publicID),metrics.With("error", err.Error()))
+            mdb.metrics.Emit(metrics.Errorf("Failed to update {{.Struct.Object.Name}} record"),metrics.With("query", elem),metrics.With("table", mdb.col),metrics.With("{{$ptag.Value}}", publicID),metrics.With("error", err.Error()))
             return err
         }
     {{else}}
         data := mapFields({{ mapoutFields .CreateAction "elem" "bson" "json" }})
         if err := mdb.dx.Update(mdb.table, data, "{{$ptag.Value}}", publicID); err != nil {
-            mdb.metrics.Emit(metrics.Errorf("Failed to update {{.Struct.Object.Name}} record"),metrics.With("query", data),metrics.With("table", mdb.col),metrics.With("{{$ptag.Value}}", publicID),metrics.With("error", err.Error()))
+            mdb.metrics.Emit(metrics.Errorf("Failed to update {{.Struct.Object.Name}} record"),metrics.With("query", elem),metrics.With("table", mdb.col),metrics.With("{{$ptag.Value}}", publicID),metrics.With("error", err.Error()))
             return err
         }
     {{end}}
