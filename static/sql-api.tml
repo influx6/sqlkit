@@ -105,7 +105,6 @@ func (mdb *{{.Struct.Object.Name}}DB) Create(ctx context.Context, elem {{.Struct
     }
 
     content := mapFields({{ mapoutFields .CreateAction "elem" "bson" "json" }})
-
     if err := mdb.dx.Save(mdb.table, content); err != nil {
         mdb.metrics.Emit(metrics.Errorf("Failed to create {{.Struct.Object.Name}} record"),metrics.With("table", mdb.col),metrics.With("query", content),metrics.With("error", err.Error()))
         return err
@@ -160,7 +159,7 @@ func (mdb *{{.Struct.Object.Name}}DB) GetAll(ctx context.Context, order string, 
                 var ritem {{.Struct.Package}}.{{.Struct.Object.Name}}
 
                 if err := rows.StructScan(&ritem); err != nil {
-                    mdb.metrics.Emit(metrics.Errorf(err),metrics.WithFields(metrics.Field{
+                    mdb.metrics.Emit(metrics.Error(err),metrics.WithFields(metrics.Field{
                         "err":   err,
                         "table": mdb.table.Table(),
                     }))
@@ -184,8 +183,6 @@ func (mdb *{{.Struct.Object.Name}}DB) GetAll(ctx context.Context, order string, 
     {{ end }}
 }
 
-
-
 // GetByField retrieves a record from the db using the field key and value,
 // returns the {{.Struct.Package}}.{{.Struct.Object.Name}} type.
 // Records using this DB must have a public id value, expressed either by a bson or json tag
@@ -196,26 +193,21 @@ func (mdb *{{.Struct.Object.Name}}DB) GetByField(ctx context.Context, key string
 
     if context.IsExpired(ctx) {
         err := fmt.Errorf("Context has expired")
-        mdb.metrics.Emit(metrics.Errorf("Failed to retrieve record"),metrics.WithFields(key, value),metrics.With("table", mdb.col),metrics.With("error", err.Error()))
-
-        return {{.Struct.Package}}.{{.Struct.Object.Name}}{}, err
-    }
-
-    item, err := mdb.dx.Get(mdb.table, key, value);
-    if err != nil {
-        mdb.metrics.Emit(metrics.Errorf("Failed to retrieve all records of {{.Struct.Object.Name}} type from db"),metrics.With("table", mdb.col),metrics.With("error", err.Error()))
+        mdb.metrics.Emit(metrics.Errorf("Failed to retrieve record"),metrics.With(key, value),metrics.With("table", mdb.col),metrics.With("error", err.Error()))
 
         return {{.Struct.Package}}.{{.Struct.Object.Name}}{}, err
     }
 
     var elem {{.Struct.Package}}.{{.Struct.Object.Name}}
 
-		if _, ok := elem.({{.Struct.Object.Name}}Consumer); !ok {
-			return elem, errors.New("Only {{.Struct.Object.Name}}Consumer allowed")
-		}
+    if _, ok := interface{}(elem).({{.Struct.Object.Name}}Consumer); !ok {
+        return elem, errors.New("Only {{.Struct.Object.Name.Name}}Consumer allowed")
+    }
 
-    if err := elem.Consume(item); err != nil {
-        mdb.metrics.Emit(metrics.Errorf("Failed to consume record data for {{.Struct.Object.Name}} from db"),metrics.With("table", mdb.col),metrics.With("data", item),metrics.With("error", err.Error()))
+    if err := mdb.dx.Get(mdb.table, &elem, key, value); err != nil {
+        mdb.metrics.Emit(metrics.Errorf("Failed to retrieve all records of {{.Struct.Object.Name.Name}} type from db"),
+        metrics.With("table", mdb.col),
+        metrics.With("error", err.Error()))
 
         return {{.Struct.Package}}.{{.Struct.Object.Name}}{}, err
     }
@@ -237,51 +229,24 @@ func (mdb *{{.Struct.Object.Name}}DB) Get(ctx context.Context, publicID string) 
         return {{.Struct.Package}}.{{.Struct.Object.Name}}{}, err
     }
 
-    {{ if ( hasFunc .Struct "Consume"  ) }}
-        item, err := mdb.dx.Get(mdb.table, "public_id", publicID);
-        if err != nil {
-            mdb.metrics.Emit(metrics.Errorf("Failed to retrieve all records of {{.Struct.Object.Name}} type from db"),metrics.With("table", mdb.col),metrics.With("error", err.Error()))
+    var elem {{.Struct.Package}}.{{.Struct.Object.Name}}
+    if _, ok := interface{}(elem).({{.Struct.Object.Name}}Consumer); !ok {
+        return elem, errors.New("Only {{.Struct.Object.Name.Name}}Consumer allowed")
+    }
 
-            return {{.Struct.Package}}.{{.Struct.Object.Name}}{}, err
-        }
+    {{ $pfield := fieldByName .Struct "PublicID" }}
+    {{ $ptag := getTag $pfield "sql" "json"}}
 
-        var elem {{.Struct.Package}}.{{.Struct.Object.Name}}
+    if err := mdb.dx.Get(mdb.table, &elem, "{{$ptag.Value}}", publicID); err != nil {
+        mdb.metrics.Emit(metrics.Errorf("Failed to retrieve all records of {{.Struct.Object.Name.Name}} type from db"),
+        metrics.With("table", mdb.col),
+        metrics.With("error", err.Error()))
 
-        if err := elem.Consume(item); err != nil {
-            mdb.metrics.Emit(metrics.Errorf("Failed to consume record data for {{.Struct.Object.Name}} from db"),metrics.With("table", mdb.col),metrics.With("data", item),metrics.With("error", err.Error()))
+        return {{.Struct.Package}}.{{.Struct.Object.Name}}{}, err
+    }
 
-            return {{.Struct.Package}}.{{.Struct.Object.Name}}{}, err
-        }
-
-        return elem, nil
-    {{ else }}
-
-        var elem {{.Struct.Package}}.{{.Struct.Object.Name}}
-
-        {{ $pfield := fieldByName .Struct "PublicID" }}
-        {{ $ptag := getTag $pfield "sql" "json"}}
-
-        if err := mdb.dx.GetBy(mdb.table, func(row *sqlx.Row) error {
-            if err := row.StructScan(&elem); err != nil {
-                mdb.metrics.Emit(metrics.Errorf(err),metrics.WithFields(metrics.Field{
-                    "err":   err,
-                    "table": mdb.table.Table(),
-                }))
-
-                return err
-            }
-
-            return nil
-        }, "{{$ptag.Value}}", publicID); err != nil {
-            mdb.metrics.Emit(metrics.Errorf("Failed to consume record data for {{.Struct.Object.Name}} from db"),metrics.With("table", mdb.col),metrics.With("error", err.Error()))
-
-            return {{.Struct.Package}}.{{.Struct.Object.Name}}{}, err
-        }
-
-        return elem, nil
-    {{ end }}
+    return elem, nil
 }
-
 
 // Update uses a record from the db using the publicID and returns the {{.Struct.Package}}.{{.Struct.Object.Name}} type.
 // Records using this DB must have a public id value, expressed either by a bson or json tag
