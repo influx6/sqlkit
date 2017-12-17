@@ -242,7 +242,7 @@ func (mdb *{{.Struct.Object.Name}}DB) Update(ctx context.Context, publicID strin
     {{end}}
 
 
-    mdb.metrics.Emit(metrics.Info("Update record"),metrics.With("table", mdb.col),metrics.With("{{$ptag.Value}}", publicID),metrics.With("query", data))
+    mdb.metrics.Emit(metrics.Info("Update record"),metrics.With("table", mdb.col),metrics.With("{{$ptag.Value}}", publicID),metrics.With("query", elem))
 
     return nil
 }
