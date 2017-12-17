@@ -56,7 +56,7 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 					gen.ToTemplateFuncs(
 						ast.ASTTemplatFuncs,
 						template.FuncMap{
-							"hasFunc": ast.HasFunctionFor(pkgDeclr),
+							"hasFunc": pkgDeclr.HasFunctionFor,
 						},
 					),
 					struct {
@@ -108,7 +108,7 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 						"map":       ast.MapOutFields,
 						"mapValues": ast.MapOutValues,
 						"mapJSON":   ast.MapOutFieldsToJSON,
-						"hasFunc":   ast.HasFunctionFor(pkgDeclr),
+						"hasFunc":   pkgDeclr.HasFunctionFor,
 					},
 					struct {
 						Pkg          *ast.PackageDeclaration
@@ -149,7 +149,7 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 					gen.ToTemplateFuncs(
 						ast.ASTTemplatFuncs,
 						template.FuncMap{
-							"hasFunc": ast.HasFunctionFor(pkgDeclr),
+							"hasFunc": pkgDeclr.HasFunctionFor,
 						},
 					),
 					struct {
