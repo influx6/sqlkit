@@ -22,6 +22,8 @@ Running the following commands instantly generates all necessary files and packa
 
 You annotate any giving struct with `@sqlapi` which marks giving struct has a target for code generation. 
 
+*All struct must have a `PublicID` field.*
+
 Sample below:
 
 ```go

@@ -78,8 +78,8 @@ func (mdb *{{.Struct.Object.Name}}DB) Create(ctx context.Context, elem {{.Struct
 				return err
     }
 
-    if fielder, ok := interface{}(elem).({{.Struct.Object.Name}}Fields); ok {
-        if err := mdb.dx.Save(mdb.table, fielder); err != nil {
+    {{ if (hasFunc .Struct "Fields") }}
+        if err := mdb.dx.Save(mdb.table, elem); err != nil {
             mdb.metrics.Emit(
                 metrics.Errorf("Failed to create {{.Struct.Object.Name}} record"),
                 metrics.With("table", mdb.col),
@@ -93,24 +93,16 @@ func (mdb *{{.Struct.Object.Name}}DB) Create(ctx context.Context, elem {{.Struct
         mdb.metrics.Emit(metrics.Info("Create record"),
         metrics.With("table", mdb.col),
         metrics.With("elem", elem))
+    {{else}}
+        content := mapFields({{ mapoutFields .CreateAction "elem" "bson" "json" }})
+        if err := mdb.dx.Save(mdb.table, content); err != nil {
+            mdb.metrics.Emit(metrics.Errorf("Failed to create {{.Struct.Object.Name}} record"),metrics.With("table", mdb.col),metrics.With("query", content),metrics.With("error", err.Error()))
+            return err
+        }
 
-        return nil
-    }
+        mdb.metrics.Emit(metrics.Info("Create record"),metrics.With("table", mdb.col),metrics.With("query", content))
+    {{end}}
 
-    if context.IsExpired(ctx) {
-        err := fmt.Errorf("Context has expired")
-
-        mdb.metrics.Emit(metrics.Errorf("Failed to create record"),metrics.With("publicID", elem.PublicID),metrics.With("table", mdb.col),metrics.With("error", err.Error()))
-        return err
-    }
-
-    content := mapFields({{ mapoutFields .CreateAction "elem" "bson" "json" }})
-    if err := mdb.dx.Save(mdb.table, content); err != nil {
-        mdb.metrics.Emit(metrics.Errorf("Failed to create {{.Struct.Object.Name}} record"),metrics.With("table", mdb.col),metrics.With("query", content),metrics.With("error", err.Error()))
-        return err
-    }
-
-    mdb.metrics.Emit(metrics.Info("Create record"),metrics.With("table", mdb.col),metrics.With("query", content))
     return nil
 }
 
@@ -128,59 +120,29 @@ func (mdb *{{.Struct.Object.Name}}DB) GetAll(ctx context.Context, order string, 
         return nil, -1, err
     }
 
-    {{ if ( hasFunc .Struct "Consume"  ) }}
-        var ritems []{{.Struct.Package}}.{{.Struct.Object.Name}}
+    var total int
+    var ritems []{{.Struct.Package}}.{{.Struct.Object.Name}}
 
+    {{ if (hasFunc .Struct "Consume") }}
         items, total, err := mdb.dx.GetAllPerPage(mdb.table, order, orderby, page, responsePerPage);
         if err != nil {
             mdb.metrics.Emit(metrics.Errorf("Failed to retrieve all records of {{.Struct.Object.Name}} type from db"),metrics.With("table", mdb.col),metrics.With("error", err.Error()))
-
             return nil, total, err
         }
 
         for _, item := range items {
             var elem {{.Struct.Package}}.{{.Struct.Object.Name}}
-
             if err := elem.Consume(item); err != nil {
                 mdb.metrics.Emit(metrics.Errorf("Failed to consume record data for {{.Struct.Object.Name}} from db"),metrics.With("table", mdb.col),metrics.With("data", item),metrics.With("error", err.Error()))
-
                 return nil, -1, err
             }
-
             ritems = append(ritems, elem)
         }
+    {{else}}
+        panic("{{.Struct.Object.Name.Name}} must implement {{.Struct.Object.Name.Name}}Consumer")
+    {{end}}
 
-        return ritems, total, nil
-    {{ else }}
-        var ritems []{{.Struct.Package}}.{{.Struct.Object.Name}}
-
-        total, err := mdb.dx.GetAllPerPageBy(mdb.table, order, orderby, page, responsePerPage, func(rows *sqlx.Rows) error {
-            for rows.Next() {
-                var ritem {{.Struct.Package}}.{{.Struct.Object.Name}}
-
-                if err := rows.StructScan(&ritem); err != nil {
-                    mdb.metrics.Emit(metrics.Error(err),metrics.WithFields(metrics.Field{
-                        "err":   err,
-                        "table": mdb.table.Table(),
-                    }))
-
-                    return err
-                }
-
-                ritems = append(ritems, ritem)
-            }
-
-            return nil
-        });
-
-        if err != nil {
-            mdb.metrics.Emit(metrics.Errorf("Failed to consume record data for {{.Struct.Object.Name}} from db"),metrics.With("table", mdb.col),metrics.With("error", err.Error()))
-
-            return nil, total, err
-        }
-
-        return ritems, total, nil
-    {{ end }}
+    return ritems, total, nil
 }
 
 // GetByField retrieves a record from the db using the field key and value,
@@ -200,17 +162,17 @@ func (mdb *{{.Struct.Object.Name}}DB) GetByField(ctx context.Context, key string
 
     var elem {{.Struct.Package}}.{{.Struct.Object.Name}}
 
-    if _, ok := interface{}(elem).({{.Struct.Object.Name}}Consumer); !ok {
-        return elem, errors.New("Only {{.Struct.Object.Name.Name}}Consumer allowed")
-    }
+    {{ if (hasFunc .Struct "Consume") }}
+        if err := mdb.dx.Get(mdb.table, &elem, key, value); err != nil {
+            mdb.metrics.Emit(metrics.Errorf("Failed to retrieve all records of {{.Struct.Object.Name.Name}} type from db"),
+            metrics.With("table", mdb.col),
+            metrics.With("error", err.Error()))
 
-    if err := mdb.dx.Get(mdb.table, &elem, key, value); err != nil {
-        mdb.metrics.Emit(metrics.Errorf("Failed to retrieve all records of {{.Struct.Object.Name.Name}} type from db"),
-        metrics.With("table", mdb.col),
-        metrics.With("error", err.Error()))
-
-        return {{.Struct.Package}}.{{.Struct.Object.Name}}{}, err
-    }
+            return {{.Struct.Package}}.{{.Struct.Object.Name}}{}, err
+        }
+    {{else}}
+        panic("{{.Struct.Object.Name.Name}} must implement {{.Struct.Object.Name.Name}}Consumer")
+    {{end}}
 
     return elem, nil
 }
@@ -230,20 +192,22 @@ func (mdb *{{.Struct.Object.Name}}DB) Get(ctx context.Context, publicID string) 
     }
 
     var elem {{.Struct.Package}}.{{.Struct.Object.Name}}
-    if _, ok := interface{}(elem).({{.Struct.Object.Name}}Consumer); !ok {
-        return elem, errors.New("Only {{.Struct.Object.Name.Name}}Consumer allowed")
-    }
 
-    {{ $pfield := fieldByName .Struct "PublicID" }}
-    {{ $ptag := getTag $pfield "sql" "json"}}
+    {{ if ( hasFunc .Struct "Consume"  ) }}
+        {{ $pfield := fieldByName .Struct "PublicID" }}
+        {{ $ptag := getTag $pfield "sql" "json"}}
 
-    if err := mdb.dx.Get(mdb.table, &elem, "{{$ptag.Value}}", publicID); err != nil {
-        mdb.metrics.Emit(metrics.Errorf("Failed to retrieve all records of {{.Struct.Object.Name.Name}} type from db"),
-        metrics.With("table", mdb.col),
-        metrics.With("error", err.Error()))
+        if err := mdb.dx.Get(mdb.table, &elem, "{{$ptag.Value}}", publicID); err != nil {
+            mdb.metrics.Emit(metrics.Errorf("Failed to retrieve all records of {{.Struct.Object.Name.Name}} type from db"),
+            metrics.With("table", mdb.col),
+            metrics.With("error", err.Error()))
 
-        return {{.Struct.Package}}.{{.Struct.Object.Name}}{}, err
-    }
+            return {{.Struct.Package}}.{{.Struct.Object.Name}}{}, err
+        }
+    {{else}}
+        panic("{{.Struct.Object.Name.Name}} must implement {{.Struct.Object.Name.Name}}Consumer")
+    {{end}}
+
 
     return elem, nil
 }
@@ -261,16 +225,16 @@ func (mdb *{{.Struct.Object.Name}}DB) Update(ctx context.Context, publicID strin
         return err
     }
 
-    var data {{.Struct.Object.Name}}Fields
-
-    if fields, ok := interface{}(elem).({{.Struct.Object.Name}}Fields); ok {
-        data = fields
-    }else{
-        data = mapFields({{ mapoutFields .CreateAction "elem" "bson" "json" }})
-    }
-
     {{ $pfield := fieldByName .Struct "PublicID" }}
     {{ $ptag := getTag $pfield "sql" "json"}}
+
+    var data {{.Struct.Object.Name}}Fields
+
+    {{ if ( hasFunc .Struct "Fields"  ) }}
+        data = fields
+    {{else}}
+        data = mapFields({{ mapoutFields .CreateAction "elem" "bson" "json" }})
+    {{end}}
 
     if err := mdb.dx.Update(mdb.table, data, "{{$ptag.Value}}", publicID); err != nil {
         mdb.metrics.Emit(metrics.Errorf("Failed to update {{.Struct.Object.Name}} record"),metrics.With("query", data),metrics.With("table", mdb.col),metrics.With("{{$ptag.Value}}", publicID),metrics.With("error", err.Error()))

@@ -2,6 +2,7 @@ package sql
 
 import (
 	"fmt"
+	goast "go/ast"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -14,6 +15,37 @@ import (
 
 // APIGen implements the necessary logic to generated CRUD structures for using a sql based database.
 func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaration, pkgDeclr ast.PackageDeclaration, pkg ast.Package) ([]gen.WriteDirective, error) {
+	var hasPublicID bool
+
+	// Validate we have a `PublicID` field.
+	{
+	fieldLoop:
+		for _, field := range str.Struct.Fields.List {
+			typeIdent, ok := field.Type.(*goast.Ident)
+			if !ok {
+				continue
+			}
+
+			// If typeName is not a string, skip.
+			if typeIdent.Name != "string" {
+				continue
+			}
+
+			for _, indent := range field.Names {
+				if indent.Name == "PublicID" {
+					hasPublicID = true
+					break fieldLoop
+				}
+			}
+		}
+	}
+
+	if !hasPublicID {
+		return nil, fmt.Errorf(`Struct has no 'PublicID' field with 'string' type
+		 Add 'PublicID string json:"public_id"' to struct %q
+		`, str.Object.Name.Name)
+	}
+
 	updateAction := str
 	createAction := str
 
