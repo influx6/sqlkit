@@ -170,9 +170,10 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 
 	return []gen.WriteDirective{
 		{
-			Writer:   sqlJSONGen,
-			FileName: fmt.Sprintf("%s_fixtures_test.go", packageName),
-			Dir:      packageName,
+			Writer:       sqlJSONGen,
+			FileName:     fmt.Sprintf("%s_fixtures_test.go", packageName),
+			Dir:          packageName,
+			DontOverride: true,
 		},
 		{
 			Writer:   sqlReadmeGen,
