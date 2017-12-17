@@ -5,12 +5,12 @@ var (
     events = metrics.New(custom.StackDisplay(os.Stdout))
 
     config = sql.Config{
-        DBName: os.Getenv("{{.Struct.Package}}_SQL_DB"),
-        User: os.Getenv("{{.Struct.Package}}_SQL_USER"),
-        DBIP: os.Getenv("{{.Struct.Package}}_SQL_ADDR"),
-        DBPort: os.Getenv("{{.Struct.Package}}_SQL_PORT"),
-        DBDriver: os.Getenv("{{.Struct.Package}}_SQL_Driver"),
-        UserPassword: os.Getenv("{{.Struct.Package}}_SQL_PASSWORD"),
+        DBName: os.Getenv("{{.Struct.Package}}_SQL_TEST_DB"),
+        User: os.Getenv("{{.Struct.Package}}_SQL_TEST_USER"),
+        DBIP: os.Getenv("{{.Struct.Package}}_SQL_TEST_ADDR"),
+        DBPort: os.Getenv("{{.Struct.Package}}_SQL_TEST_PORT"),
+        DBDriver: os.Getenv("{{.Struct.Package}}_SQL_TEST_Driver"),
+        UserPassword: os.Getenv("{{.Struct.Package}}_SQL_TEST_PASSWORD"),
     }
 
     testCol = "{{lower .Struct.Object.Name.Name}}_test"

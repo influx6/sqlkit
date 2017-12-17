@@ -62,6 +62,8 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 	}
 
 	packageName := fmt.Sprintf("%ssql", strings.ToLower(str.Object.Name.Name))
+	packageFinalPath := filepath.Join(str.Path, toDir, packageName)
+
 	sqlTestGen := gen.Block(
 		gen.Package(
 			gen.Name(fmt.Sprintf("%s_test", packageName)),
@@ -116,7 +118,11 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 					Struct       ast.StructDeclaration
 					CreateAction ast.StructDeclaration
 					UpdateAction ast.StructDeclaration
+					PackageName  string
+					PackagePath  string
 				}{
+					PackagePath:  packageFinalPath,
+					PackageName:  packageName,
 					Pkg:          &pkgDeclr,
 					Struct:       str,
 					CreateAction: createAction,
@@ -142,6 +148,38 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 						"mapJSON":   ast.MapOutFieldsToJSON,
 						"hasFunc":   pkgDeclr.HasFunctionFor,
 					},
+					struct {
+						Pkg          *ast.PackageDeclaration
+						Struct       ast.StructDeclaration
+						CreateAction ast.StructDeclaration
+						UpdateAction ast.StructDeclaration
+					}{
+						Pkg:          &pkgDeclr,
+						Struct:       str,
+						CreateAction: createAction,
+						UpdateAction: updateAction,
+					},
+				),
+			),
+		),
+	)
+
+	sqlBackendGen := gen.Block(
+		gen.Package(
+			gen.Name("types"),
+			gen.Imports(
+				gen.Import("github.com/influx6/faux/context", ""),
+				gen.Import(str.Path, ""),
+			),
+			gen.Block(
+				gen.SourceTextWith(
+					string(static.MustReadFile("sql-api-backend.tml", true)),
+					gen.ToTemplateFuncs(
+						ast.ASTTemplatFuncs,
+						template.FuncMap{
+							"hasFunc": pkgDeclr.HasFunctionFor,
+						},
+					),
 					struct {
 						Pkg          *ast.PackageDeclaration
 						Struct       ast.StructDeclaration
@@ -216,6 +254,12 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 			Writer:   fmtwriter.New(sqlTestGen, true, true),
 			FileName: fmt.Sprintf("%s_test.go", packageName),
 			Dir:      packageName,
+		},
+		{
+			Writer:       fmtwriter.New(sqlBackendGen, true, true),
+			FileName:     fmt.Sprintf("%s_backend.go", strings.ToLower(str.Object.Name.Name)),
+			Dir:          "types",
+			DontOverride: true,
 		},
 		{
 			Writer:   fmtwriter.New(sqlGen, true, true),
