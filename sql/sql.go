@@ -205,6 +205,7 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 			gen.Imports(
 				gen.Import("fmt", ""),
 				gen.Import("errors", ""),
+				gen.Import("database/sql", "dsql"),
 				gen.Import("github.com/jmoiron/sqlx", ""),
 				gen.Import("github.com/influx6/faux/db", ""),
 				gen.Import("github.com/influx6/faux/context", ""),
