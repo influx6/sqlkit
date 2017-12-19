@@ -33,7 +33,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			currentdir = filepath.Join(currentdir,target)
+			currentdir = filepath.Join(currentdir, target)
 
 			generators := ast.NewAnnotationRegistryWith(logs)
 			generators.Register("sqlapi", sql.APIGen)

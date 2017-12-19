@@ -95,15 +95,15 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 			gen.SourceText(
 				string(static.MustReadFile("sql-api-readme.tml", true)),
 				struct {
-					Pkg          *ast.PackageDeclaration
-					Struct       ast.StructDeclaration
-					PackageName  string
-					PackagePath  string
+					Pkg         *ast.PackageDeclaration
+					Struct      ast.StructDeclaration
+					PackageName string
+					PackagePath string
 				}{
-					PackagePath:  packageFinalPath,
-					PackageName:  packageName,
-					Pkg:          &pkgDeclr,
-					Struct:       str,
+					PackagePath: packageFinalPath,
+					PackageName: packageName,
+					Pkg:         &pkgDeclr,
+					Struct:      str,
 				},
 			),
 		),
@@ -120,17 +120,18 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 				gen.SourceTextWith(
 					string(static.MustReadFile("sql-api-json.tml", true)),
 					template.FuncMap{
-						"map":       ast.MapOutFields,
-						"mapValues": ast.MapOutValues,
-						"mapJSON":   ast.MapOutFieldsToJSON,
-						"hasFunc":   pkgDeclr.HasFunctionFor,
+						"map":           ast.MapOutFields,
+						"mapValues":     ast.MapOutValues,
+						"mapJSON":       ast.MapOutFieldsToJSON,
+						"mapRandomJSON": ast.MapOutFieldsWithRandomValuesToJSON,
+						"hasFunc":       pkgDeclr.HasFunctionFor,
 					},
 					struct {
-						Pkg          *ast.PackageDeclaration
-						Struct       ast.StructDeclaration
+						Pkg    *ast.PackageDeclaration
+						Struct ast.StructDeclaration
 					}{
-						Pkg:          &pkgDeclr,
-						Struct:       str,
+						Pkg:    &pkgDeclr,
+						Struct: str,
 					},
 				),
 			),
@@ -154,11 +155,11 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 						},
 					),
 					struct {
-						Pkg          *ast.PackageDeclaration
-						Struct       ast.StructDeclaration
+						Pkg    *ast.PackageDeclaration
+						Struct ast.StructDeclaration
 					}{
-						Pkg:          &pkgDeclr,
-						Struct:       str,
+						Pkg:    &pkgDeclr,
+						Struct: str,
 					},
 				),
 			),
@@ -193,11 +194,11 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 						},
 					),
 					struct {
-						Pkg          *ast.PackageDeclaration
-						Struct       ast.StructDeclaration
+						Pkg    *ast.PackageDeclaration
+						Struct ast.StructDeclaration
 					}{
-						Pkg:          &pkgDeclr,
-						Struct:       str,
+						Pkg:    &pkgDeclr,
+						Struct: str,
 					},
 				),
 			),
@@ -208,7 +209,7 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 		{
 			Writer:       sqlJSONGen,
 			FileName:     fmt.Sprintf("%s_fixtures.go", packageName),
-			Dir:          filepath.Join(packageName,"fixtures"),
+			Dir:          filepath.Join(packageName, "fixtures"),
 			DontOverride: true,
 		},
 		{
