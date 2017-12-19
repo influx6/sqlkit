@@ -116,7 +116,7 @@ func (mdb *{{.Struct.Object.Name}}DB) Create(ctx context.Context, elem {{.Struct
 
 // GetAllByOrder attempts to retrieve all elements from db using provided order and orderby 
 // values.
-func (mdb *{{.Struct.Object.Name}}DB) GetAllByOrder(ctx context.Context, order string, orderby string)  ([]{{.Struct.Package}}.{{.Struct.Object.Name}}, int, error) {
+func (mdb *{{.Struct.Object.Name}}DB) GetAllByOrder(ctx context.Context, order string, orderby string)  ([]{{.Struct.Package}}.{{.Struct.Object.Name}}, error) {
     res,_, err := mdb.GetAll(ctx, order, orderby, -1, -1)
     return res, err
 }
