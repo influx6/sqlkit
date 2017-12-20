@@ -32,10 +32,12 @@ func main() {
 			if err != nil {
 				return err
 			}
-			currentdir = filepath.Join(currentdir, target)
+
 			if !filepath.IsAbs(dest) {
 				dest = filepath.Join(currentdir, dest)
 			}
+
+			currentdir = filepath.Join(currentdir, target)
 
 			generators := ast.NewAnnotationRegistryWith(logs)
 			generators.Register("sqlapi", sql.APIGen)
