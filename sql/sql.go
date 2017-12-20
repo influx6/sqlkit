@@ -14,7 +14,7 @@ import (
 )
 
 // APIGen implements the necessary logic to generated CRUD structures for using a sql based database.
-func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaration, pkgDeclr ast.PackageDeclaration, pkg ast.Package) ([]gen.WriteDirective, error) {
+func APIGen(toPackage string, an ast.AnnotationDeclaration, str ast.StructDeclaration, pkgDeclr ast.PackageDeclaration, pkg ast.Package) ([]gen.WriteDirective, error) {
 	var hasPublicID bool
 
 	// Validate we have a `PublicID` field.
@@ -47,7 +47,7 @@ func APIGen(toDir string, an ast.AnnotationDeclaration, str ast.StructDeclaratio
 	}
 
 	packageName := fmt.Sprintf("%ssql", strings.ToLower(str.Object.Name.Name))
-	packageFinalPath := filepath.Join(str.Path, toDir, packageName)
+	packageFinalPath := filepath.Join(toPackage, packageName)
 
 	//sqlTestGen := gen.Block(
 	//	gen.Package(
