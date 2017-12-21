@@ -142,7 +142,7 @@ func APIGen(toPackage string, an ast.AnnotationDeclaration, str ast.StructDeclar
 		gen.Package(
 			gen.Name("types"),
 			gen.Imports(
-				gen.Import("github.com/influx6/faux/context", ""),
+				gen.Import("context", ""),
 				gen.Import(str.Path, ""),
 			),
 			gen.Block(
@@ -173,12 +173,12 @@ func APIGen(toPackage string, an ast.AnnotationDeclaration, str ast.StructDeclar
 		gen.Package(
 			gen.Name(packageName),
 			gen.Imports(
+				gen.Import("context", ""),
 				gen.Import("fmt", ""),
 				gen.Import("errors", ""),
 				gen.Import("database/sql", "dsql"),
 				gen.Import("github.com/jmoiron/sqlx", ""),
 				gen.Import("github.com/influx6/faux/db", ""),
-				gen.Import("github.com/influx6/faux/context", ""),
 				gen.Import("github.com/influx6/faux/metrics", ""),
 				gen.Import("github.com/influx6/faux/db/sql", ""),
 				gen.Import("github.com/influx6/faux/db/sql/tables", ""),
