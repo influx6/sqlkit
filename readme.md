@@ -4,6 +4,10 @@ SqlKit
 
 Sqlkit implements a code generator which automatically generates go packages for sql db implementations for annotated structs.
 
+Due to the nature of the sql, the code gen mainly caters for flag structures, that is where all struct fields are not 
+referenced types like list and maps. If you have such, it would be more beneficial to write custom code that handle the 
+intricacies of such structs.
+
 ## Install
 
 ```
