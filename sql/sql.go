@@ -13,6 +13,73 @@ import (
 	"github.com/influx6/moz/gen"
 )
 
+// SimpleGen implements the necessary logic to generated CRUD structures for using a sql based database.
+func SimpleGen(toPackage string, an ast.AnnotationDeclaration, pkgDeclr ast.PackageDeclaration, pkg ast.Package) ([]gen.WriteDirective, error) {
+	sqlReadmeGen := gen.Block(
+		gen.Block(
+			gen.SourceText(
+				string(static.MustReadFile("sql-simple-readme.tml", true)),
+				struct {
+					Pkg         *ast.PackageDeclaration
+					Struct      ast.StructDeclaration
+					PackageName string
+					PackagePath string
+				}{
+					PackagePath: filepath.Join(pkgDeclr.Path, "sqldb"),
+					PackageName: "sqldb",
+					Pkg:         &pkgDeclr,
+				},
+			),
+		),
+	)
+
+	sqlGen := gen.Block(
+		gen.Package(
+			gen.Name("sqldb"),
+			gen.Imports(
+				gen.Import("context", ""),
+				gen.Import("fmt", ""),
+				gen.Import("errors", ""),
+				gen.Import("database/sql", "dsql"),
+				gen.Import("github.com/influx6/faux/db", ""),
+				gen.Import("github.com/influx6/faux/metrics", ""),
+				gen.Import("github.com/influx6/faux/db/sql", ""),
+				gen.Import("github.com/influx6/faux/db/sql/tables", ""),
+			),
+			gen.Block(
+				gen.SourceTextWith(
+					string(static.MustReadFile("sql-simple.tml", true)),
+					gen.ToTemplateFuncs(
+						ast.ASTTemplatFuncs,
+						template.FuncMap{
+							"hasFunc": pkgDeclr.HasFunctionFor,
+						},
+					),
+					struct {
+						Pkg    *ast.PackageDeclaration
+						Struct ast.StructDeclaration
+					}{
+						Pkg: &pkgDeclr,
+					},
+				),
+			),
+		),
+	)
+
+	return []gen.WriteDirective{
+		{
+			Writer:   sqlReadmeGen,
+			FileName: "README.md",
+			Dir:      "sqldb",
+		},
+		{
+			Writer:   fmtwriter.New(sqlGen, true, true),
+			FileName: "sqldb.go",
+			Dir:      "sqldb",
+		},
+	}, nil
+}
+
 // APIGen implements the necessary logic to generated CRUD structures for using a sql based database.
 func APIGen(toPackage string, an ast.AnnotationDeclaration, str ast.StructDeclaration, pkgDeclr ast.PackageDeclaration, pkg ast.Package) ([]gen.WriteDirective, error) {
 	var hasPublicID bool
@@ -48,47 +115,56 @@ func APIGen(toPackage string, an ast.AnnotationDeclaration, str ast.StructDeclar
 
 	packageName := fmt.Sprintf("%ssql", strings.ToLower(str.Object.Name.Name))
 	packageFinalPath := filepath.Join(toPackage, packageName)
+	packageFinalFixturesPath := filepath.Join(toPackage, packageName, "fixtures")
 
-	//sqlTestGen := gen.Block(
-	//	gen.Package(
-	//		gen.Name(fmt.Sprintf("%s_test", packageName)),
-	//		gen.Imports(
-	//			gen.Import("os", ""),
-	//			gen.Import("time", ""),
-	//			gen.Import("testing", ""),
-	//			gen.Import("encoding/json", ""),
-	//			gen.Import("github.com/influx6/faux/db", ""),
-	//			gen.Import("github.com/influx6/faux/tests", ""),
-	//			gen.Import("github.com/influx6/faux/db/sql", ""),
-	//			gen.Import("github.com/influx6/faux/metrics", ""),
-	//			gen.Import("github.com/influx6/faux/context", ""),
-	//			gen.Import("github.com/influx6/faux/metrics/custom", ""),
-	//			gen.Import("github.com/go-sql-driver/mysql", "_"),
-	//			gen.Import("github.com/lib/pq", "_"),
-	//			gen.Import("github.com/mattn/go-sqlite3", "_"),
-	//			gen.Import(filepath.Join(str.Path, toDir, packageName), "sqldb"),
-	//			gen.Import(str.Path, ""),
-	//		),
-	//		gen.Block(
-	//			gen.SourceTextWith(
-	//				string(static.MustReadFile("sql-api-test.tml", true)),
-	//				gen.ToTemplateFuncs(
-	//					ast.ASTTemplatFuncs,
-	//					template.FuncMap{
-	//						"hasFunc": pkgDeclr.HasFunctionFor,
-	//					},
-	//				),
-	//				struct {
-	//					Pkg          *ast.PackageDeclaration
-	//					Struct       ast.StructDeclaration
-	//				}{
-	//					Pkg:          &pkgDeclr,
-	//					Struct:       str,
-	//				},
-	//			),
-	//		),
-	//	),
-	//)
+	configName := an.Param("ENVName")
+	if configName == "" {
+		configName = strings.ToUpper(str.Package)
+	}
+
+	sqlTestGen := gen.Block(
+		gen.Package(
+			gen.Name(fmt.Sprintf("%s_test", packageName)),
+			gen.Imports(
+				gen.Import("os", ""),
+				gen.Import("time", ""),
+				gen.Import("testing", ""),
+				gen.Import("context", ""),
+				gen.Import("encoding/json", ""),
+				gen.Import("github.com/influx6/faux/db", ""),
+				gen.Import("github.com/influx6/faux/tests", ""),
+				gen.Import("github.com/influx6/faux/db/sql", ""),
+				gen.Import("github.com/influx6/faux/metrics", ""),
+				gen.Import("github.com/influx6/faux/metrics/custom", ""),
+				gen.Import("github.com/go-sql-driver/mysql", "_"),
+				gen.Import("github.com/lib/pq", "_"),
+				gen.Import("github.com/mattn/go-sqlite3", "_"),
+				gen.Import(packageFinalPath, "sqldb"),
+				gen.Import(packageFinalFixturesPath, "fixtures"),
+				gen.Import(str.Path, ""),
+			),
+			gen.Block(
+				gen.SourceTextWith(
+					string(static.MustReadFile("sql-api-test.tml", true)),
+					gen.ToTemplateFuncs(
+						ast.ASTTemplatFuncs,
+						template.FuncMap{
+							"hasFunc": pkgDeclr.HasFunctionFor,
+						},
+					),
+					struct {
+						ENVName string
+						Pkg     *ast.PackageDeclaration
+						Struct  ast.StructDeclaration
+					}{
+						ENVName: configName,
+						Pkg:     &pkgDeclr,
+						Struct:  str,
+					},
+				),
+			),
+		),
+	)
 
 	sqlReadmeGen := gen.Block(
 		gen.Block(
@@ -100,6 +176,48 @@ func APIGen(toPackage string, an ast.AnnotationDeclaration, str ast.StructDeclar
 					PackageName string
 					PackagePath string
 				}{
+					PackagePath: packageFinalPath,
+					PackageName: packageName,
+					Pkg:         &pkgDeclr,
+					Struct:      str,
+				},
+			),
+		),
+	)
+
+	sqlMakefileGen := gen.Block(
+		gen.Block(
+			gen.SourceText(
+				string(static.MustReadFile("makefile.tml", true)),
+				struct {
+					Pkg         *ast.PackageDeclaration
+					Struct      ast.StructDeclaration
+					PackageName string
+					PackagePath string
+					ENVName     string
+				}{
+					ENVName:     configName,
+					PackagePath: packageFinalPath,
+					PackageName: packageName,
+					Pkg:         &pkgDeclr,
+					Struct:      str,
+				},
+			),
+		),
+	)
+
+	sqlDockerfileGen := gen.Block(
+		gen.Block(
+			gen.SourceText(
+				string(static.MustReadFile("dockerfile.tml", true)),
+				struct {
+					Pkg         *ast.PackageDeclaration
+					Struct      ast.StructDeclaration
+					PackageName string
+					PackagePath string
+					ENVName     string
+				}{
+					ENVName:     configName,
 					PackagePath: packageFinalPath,
 					PackageName: packageName,
 					Pkg:         &pkgDeclr,
@@ -213,6 +331,16 @@ func APIGen(toPackage string, an ast.AnnotationDeclaration, str ast.StructDeclar
 			DontOverride: true,
 		},
 		{
+			Writer:   sqlMakefileGen,
+			FileName: "makefile",
+			Dir:      packageName,
+		},
+		{
+			Writer:   sqlDockerfileGen,
+			FileName: "test.dockerfile",
+			Dir:      packageName,
+		},
+		{
 			Writer:   sqlReadmeGen,
 			FileName: "README.md",
 			Dir:      packageName,
@@ -228,10 +356,10 @@ func APIGen(toPackage string, an ast.AnnotationDeclaration, str ast.StructDeclar
 			FileName: fmt.Sprintf("%s.go", packageName),
 			Dir:      packageName,
 		},
-		//{
-		//	Writer:   fmtwriter.New(sqlTestGen, true, true),
-		//	FileName: fmt.Sprintf("%s_test.go", packageName),
-		//	Dir:      packageName,
-		//},
+		{
+			Writer:   fmtwriter.New(sqlTestGen, true, true),
+			FileName: fmt.Sprintf("%s_test.go", packageName),
+			Dir:      packageName,
+		},
 	}, nil
 }

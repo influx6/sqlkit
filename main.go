@@ -40,6 +40,7 @@ func main() {
 
 			generators := ast.NewAnnotationRegistryWith(logs)
 			generators.Register("sqlapi", sql.APIGen)
+			generators.Register("sql", sql.SimpleGen)
 
 			res, err := ast.ParseAnnotations(logs, currentdir)
 			if err != nil {

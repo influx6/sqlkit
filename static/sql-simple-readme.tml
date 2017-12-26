@@ -1,0 +1,15 @@
+SQLDB API
+===================================
+
+[![Go Report Card](https://goreportcard.com/badge/{{.PackagePath}})](https://goreportcard.com/report/{{.PackagePath}})
+
+SQLDB API is a auto-generated base implementation for executing sql queries through a db instance.
+
+The following method exists for custom operations:
+
+## Exec
+
+```go
+Exec(ctx context.Context, fx func(*sql.SQL, sql.DB) error) error
+```
+

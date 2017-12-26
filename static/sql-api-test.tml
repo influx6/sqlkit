@@ -5,12 +5,12 @@ var (
     events = metrics.New(custom.StackDisplay(os.Stdout))
 
     config = sql.Config{
-        DBName: os.Getenv("{{.Struct.Package}}_SQL_TEST_DB"),
-        User: os.Getenv("{{.Struct.Package}}_SQL_TEST_USER"),
-        DBIP: os.Getenv("{{.Struct.Package}}_SQL_TEST_ADDR"),
-        DBPort: os.Getenv("{{.Struct.Package}}_SQL_TEST_PORT"),
-        DBDriver: os.Getenv("{{.Struct.Package}}_SQL_TEST_Driver"),
-        UserPassword: os.Getenv("{{.Struct.Package}}_SQL_TEST_PASSWORD"),
+        DBName: os.Getenv("{{.ENVName}}_SQL_TEST_DB"),
+        User: os.Getenv("{{.ENVName}}_SQL_TEST_USER"),
+        DBIP: os.Getenv("{{.ENVName}}_SQL_TEST_ADDR"),
+        DBPort: os.Getenv("{{.ENVName}}_SQL_TEST_PORT"),
+        DBDriver: os.Getenv("{{.ENVName}}_SQL_TEST_Driver"),
+        UserPassword: os.Getenv("{{.ENVName}}_SQL_TEST_PASSWORD"),
     }
 
     testCol = "{{lower .Struct.Object.Name.Name}}_test"
@@ -21,26 +21,27 @@ var (
 func TestGet{{.Struct.Object.Name}}(t *testing.T){
     api := sqldb.New(testCol, events, sql.NewDB(config, events))
 
-    ctx := context.WithTimeout(context.NewValueBag(), 10 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
+	defer cancel()
 
-    elem, err := Load{{.Struct.Object.Name.Name}}JSON({{lower .Struct.Object.Name.Name}}CreateJSON)
-    if err != nil {
-        tests.Failed("Successfully loaded JSON for {{.Struct.Object.Name}} record: %+q.", err)
-    }
-    tests.Passed("Successfully loaded JSON for {{.Struct.Object.Name}} record")
+	elem, err := fixtures.Load{{.Struct.Object.Name.Name}}JSON(fixtures.{{.Struct.Object.Name.Name}}JSON)
+	if err != nil {
+		tests.Failed("Successfully loaded JSON for {{.Struct.Object.Name}} record: %+q.", err)
+	}
+	tests.Passed("Successfully loaded JSON for {{.Struct.Object.Name}} record")
 
-    defer api.Delete(ctx, elem.PublicID)
+	defer api.Delete(ctx, elem.PublicID)
 
-    if err := api.Create(ctx, elem); err != nil {
-        tests.Failed("Successfully added record for {{.Struct.Object.Name}} into db: %+q.", err)
-    }
-    tests.Passed("Successfully added record for {{.Struct.Object.Name}} into db.")
+	if err := api.Create(ctx, elem); err != nil {
+		tests.Failed("Successfully added record for {{.Struct.Object.Name}} into db: %+q.", err)
+	}
+	tests.Passed("Successfully added record for {{.Struct.Object.Name}} into db.")
 
-    _, err = api.Get(ctx, elem.PublicID)
-    if err != nil {
-        tests.Failed("Successfully retrieved stored record for {{.Struct.Object.Name}} from db: %+q.", err)
-    }
-    tests.Passed("Successfully retrieved stored record for {{.Struct.Object.Name}} from db.")
+	_, err = api.Get(ctx, elem.PublicID)
+	if err != nil {
+		tests.Failed("Successfully retrieved stored record for {{.Struct.Object.Name}} from db: %+q.", err)
+	}
+	tests.Passed("Successfully retrieved stored record for {{.Struct.Object.Name}} from db.")
 }
 
 // TestGetAll{{.Struct.Object.Name}} validates the retrieval of all {{.Struct.Object.Name}}
@@ -48,31 +49,32 @@ func TestGet{{.Struct.Object.Name}}(t *testing.T){
 func TestGetAll{{.Struct.Object.Name}}(t *testing.T){
     api := sqldb.New(testCol, events, sql.NewDB(config, events))
 
-    ctx := context.WithTimeout(context.NewValueBag(), 10 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
+	defer cancel()
 
-    elem, err := Load{{.Struct.Object.Name.Name}}JSON({{lower .Struct.Object.Name.Name}}CreateJSON)
-    if err != nil {
-        tests.Failed("Successfully loaded JSON for {{.Struct.Object.Name}} record: %+q.", err)
-    }
-    tests.Passed("Successfully loaded JSON for {{.Struct.Object.Name}} record")
+	elem, err := fixtures.Load{{.Struct.Object.Name.Name}}JSON(fixtures.{{.Struct.Object.Name.Name}}JSON)
+	if err != nil {
+		tests.Failed("Successfully loaded JSON for {{.Struct.Object.Name}} record: %+q.", err)
+	}
+	tests.Passed("Successfully loaded JSON for {{.Struct.Object.Name}} record")
 
-    defer api.Delete(ctx, elem.PublicID)
+	defer api.Delete(ctx, elem.PublicID)
 
-    if err := api.Create(ctx, elem); err != nil {
-        tests.Failed("Successfully added record for {{.Struct.Object.Name}} into db: %+q.", err)
-    }
-    tests.Passed("Successfully added record for {{.Struct.Object.Name}} into db.")
+	if err := api.Create(ctx, elem); err != nil {
+		tests.Failed("Successfully added record for {{.Struct.Object.Name}} into db: %+q.", err)
+	}
+	tests.Passed("Successfully added record for {{.Struct.Object.Name}} into db.")
 
-    records, _, err := api.GetAll(ctx, "asc","{{$ptag.Value}}", -1, -1)
-    if err != nil {
-        tests.Failed("Successfully retrieved all records for {{.Struct.Object.Name}} from db: %+q.", err)
-    }
-    tests.Passed("Successfully retrieved all records for {{.Struct.Object.Name}} from db.")
+	records, err := api.GetAllByOrder(ctx, "asc", "public_id")
+	if err != nil {
+		tests.Failed("Successfully retrieved all records for {{.Struct.Object.Name}} from db: %+q.", err)
+	}
+	tests.Passed("Successfully retrieved all records for {{.Struct.Object.Name}} from db.")
 
-    if len(records) == 0 {
-        tests.Failed("Successfully retrieved atleast 1 record for {{.Struct.Object.Name}} from db.")
-    }
-    tests.Passed("Successfully retrieved atleast 1 record for {{.Struct.Object.Name}} from db.")
+	if len(records) == 0 {
+		tests.Failed("Successfully retrieved atleast 1 record for {{.Struct.Object.Name}} from db.")
+	}
+	tests.Passed("Successfully retrieved atleast 1 record for {{.Struct.Object.Name}} from db.")
 }
 
 // Test{{.Struct.Object.Name}}Create validates the creation of a {{.Struct.Object.Name}}
@@ -80,20 +82,21 @@ func TestGetAll{{.Struct.Object.Name}}(t *testing.T){
 func Test{{.Struct.Object.Name}}Create(t *testing.T){
     api := sqldb.New(testCol, events, sql.NewDB(config, events))
 
-    ctx := context.WithTimeout(context.NewValueBag(), 10 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
+	defer cancel()
 
-    elem, err := Load{{.Struct.Object.Name.Name}}JSON({{lower .Struct.Object.Name.Name}}CreateJSON)
-    if err != nil {
-        tests.Failed("Successfully loaded JSON for {{.Struct.Object.Name}} record: %+q.", err)
-    }
-    tests.Passed("Successfully loaded JSON for {{.Struct.Object.Name}} record")
+	elem, err := fixtures.Load{{.Struct.Object.Name.Name}}JSON(fixtures.{{.Struct.Object.Name.Name}}JSON)
+	if err != nil {
+		tests.Failed("Successfully loaded JSON for {{.Struct.Object.Name}} record: %+q.", err)
+	}
+	tests.Passed("Successfully loaded JSON for {{.Struct.Object.Name}} record")
 
-    defer api.Delete(ctx, elem.PublicID)
+	defer api.Delete(ctx, elem.PublicID)
 
-    if err := api.Create(ctx, elem); err != nil {
-        tests.Failed("Successfully added record for {{.Struct.Object.Name}} into db: %+q.", err)
-    }
-    tests.Passed("Successfully added record for {{.Struct.Object.Name}} into db.")
+	if err := api.Create(ctx, elem); err != nil {
+		tests.Failed("Successfully added record for {{.Struct.Object.Name}} into db: %+q.", err)
+	}
+	tests.Passed("Successfully added record for {{.Struct.Object.Name}} into db.")
 }
 
 // Test{{.Struct.Object.Name}}Update validates the update of a {{.Struct.Object.Name}}
@@ -101,33 +104,34 @@ func Test{{.Struct.Object.Name}}Create(t *testing.T){
 func Test{{.Struct.Object.Name}}Update(t *testing.T){
     api := sqldb.New(testCol, events, sql.NewDB(config, events))
 
-    ctx := context.WithTimeout(context.NewValueBag(), 10 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
+	defer cancel()
 
-    elem, err := Load{{.Struct.Object.Name.Name}}JSON({{lower .Struct.Object.Name.Name}}CreateJSON)
-    if err != nil {
-        tests.Failed("Successfully loaded JSON for {{.Struct.Object.Name}} record: %+q.", err)
-    }
-    tests.Passed("Successfully loaded JSON for {{.Struct.Object.Name}} record")
+	elem, err := fixtures.Load{{.Struct.Object.Name.Name}}JSON(fixtures.{{.Struct.Object.Name.Name}}JSON)
+	if err != nil {
+		tests.Failed("Successfully loaded JSON for {{.Struct.Object.Name}} record: %+q.", err)
+	}
+	tests.Passed("Successfully loaded JSON for {{.Struct.Object.Name}} record")
 
-    defer api.Delete(ctx, elem.PublicID)
+	defer api.Delete(ctx, elem.PublicID)
 
-    if err := api.Create(ctx, elem); err != nil {
-        tests.Failed("Successfully added record for {{.Struct.Object.Name}} into db: %+q.", err)
-    }
-    tests.Passed("Successfully added record for {{.Struct.Object.Name}} into db.")
+	if err := api.Create(ctx, elem); err != nil {
+		tests.Failed("Successfully added record for {{.Struct.Object.Name}} into db: %+q.", err)
+	}
+	tests.Passed("Successfully added record for {{.Struct.Object.Name}} into db.")
 
-    {{ randField .Struct "elem" "json" "public_id" }}
+	elem2, err := fixtures.Load{{.Struct.Object.Name.Name}}JSON(fixtures.{{.Struct.Object.Name.Name}}JSON)
+	if err != nil {
+		tests.Failed("Successfully loaded JSON for {{.Struct.Object.Name}} record: %+q.", err)
+	}
+	tests.Passed("Successfully loaded JSON for {{.Struct.Object.Name}} record")
 
-    if err := api.Update(ctx, elem.PublicID, elem); err != nil {
-        tests.Failed("Successfully updated record for {{.Struct.Object.Name}} into db: %+q.", err)
-    }
-    tests.Passed("Successfully updated record for {{.Struct.Object.Name}} into db.")
+	elem2.PublicID = elem.PublicID
 
-    _, err = api.Get(ctx, elem.PublicID)
-    if err != nil {
-        tests.Failed("Successfully retrieved stored record for {{.Struct.Object.Name}} from db: %+q.", err)
-    }
-    tests.Passed("Successfully retrieved stored record for {{.Struct.Object.Name}} from db.")
+	if err := api.Update(ctx, elem2.PublicID, elem2); err != nil {
+		tests.Failed("Successfully updated record for {{.Struct.Object.Name}} into db: %+q.", err)
+	}
+	tests.Passed("Successfully updated record for {{.Struct.Object.Name}} into db.")
 }
 
 // Test{{.Struct.Object.Name}}Delete validates the removal of a {{.Struct.Object.Name}}
@@ -135,21 +139,27 @@ func Test{{.Struct.Object.Name}}Update(t *testing.T){
 func Test{{.Struct.Object.Name}}Delete(t *testing.T){
     api := sqldb.New(testCol, events, sql.NewDB(config, events))
 
-    ctx := context.WithTimeout(context.NewValueBag(), 10 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
+	defer cancel()
 
-    elem, err := Load{{.Struct.Object.Name.Name}}JSON({{lower .Struct.Object.Name.Name}}CreateJSON)
-    if err != nil {
-        tests.Failed("Successfully loaded JSON for {{.Struct.Object.Name}} record: %+q.", err)
-    }
-    tests.Passed("Successfully loaded JSON for {{.Struct.Object.Name}} record")
+	elem, err := fixtures.Load{{.Struct.Object.Name.Name}}JSON(fixtures.{{.Struct.Object.Name.Name}}JSON)
+	if err != nil {
+		tests.Failed("Successfully loaded JSON for {{.Struct.Object.Name}} record: %+q.", err)
+	}
+	tests.Passed("Successfully loaded JSON for {{.Struct.Object.Name}} record")
 
-    if err := api.Create(ctx, elem); err != nil {
-        tests.Failed("Successfully added record for {{.Struct.Object.Name}} into db: %+q.", err)
-    }
-    tests.Passed("Successfully added record for {{.Struct.Object.Name}} into db.")
+	if err := api.Create(ctx, elem); err != nil {
+		tests.Failed("Successfully added record for {{.Struct.Object.Name}} into db: %+q.", err)
+	}
+	tests.Passed("Successfully added record for {{.Struct.Object.Name}} into db.")
 
-    if err := api.Delete(ctx, elem.PublicID); err != nil {
-        tests.Failed("Successfully removed record for {{.Struct.Object.Name}} into db: %+q.", err)
-    }
-    tests.Passed("Successfully removed record for {{.Struct.Object.Name}} into db.")
+	if err := api.Delete(ctx, elem.PublicID); err != nil {
+		tests.Failed("Successfully removed record for {{.Struct.Object.Name}} into db: %+q.", err)
+	}
+	tests.Passed("Successfully removed record for {{.Struct.Object.Name}} into db.")
+
+	if _, err = api.Get(ctx, elem.PublicID); err == nil {
+		tests.Failed("Successfully failed to get deleted record for {{.Struct.Object.Name}} into db.")
+	}
+	tests.Passed("Successfully failed to get deleted record for {{.Struct.Object.Name}} into db.")
 }

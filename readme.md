@@ -59,3 +59,36 @@ type UserConsumer interface {
 	Consume(map[string]interface{}) error
 }
 ```
+
+## Customization
+
+If you wish to use a custome name prefix for the config environment variables names generating in the test, then setting 
+a attribute of `ENVName` on the attribute will generate a config in the ff format:
+
+```go
+// @sql(ENVName => BOB)
+```
+
+```go
+    config := mdb.Config{
+        Mode: mgo.Monotonic,
+        DB: os.Getenv("{{.ENVName}}_SQL_TEST_DB"),
+        Host: os.Getenv("{{.ENVName}}_SQL_TEST_HOST"),
+        User: os.Getenv("{{.ENVName}}_SQL_TEST_USER"),
+        AuthDB: os.Getenv("{{.ENVName}}_SQL_TEST_AUTHDB"),
+        Password: os.Getenv("{{.ENVName}}_SQL_TEST_PASSWORD"),
+    }
+```
+
+Will result in:
+
+```go
+    config := mdb.Config{
+        Mode: mgo.Monotonic,
+        DB: os.Getenv("BOB_SQL_TEST_DB"),
+        Host: os.Getenv("BOB_SQL_TEST_HOST"),
+        User: os.Getenv("BOB_SQL_TEST_USER"),
+        AuthDB: os.Getenv("BOB_SQL_TEST_AUTHDB"),
+        Password: os.Getenv("BOB_SQL_TEST_PASSWORD"),
+    }
+```

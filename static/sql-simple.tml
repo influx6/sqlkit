@@ -1,0 +1,59 @@
+// errors ...
+var (
+    ErrNotFound = errors.New("record not found")
+)
+
+// SQLDB defines a structure which provide DB CRUD operations
+// using sql as the underline db.
+type SQLDB struct{
+	*sql.SQL
+  col string
+  sx sql.DB
+  metrics metrics.Metrics
+  table db.TableIdentity
+}
+
+// New returns a new instance of SQLDB.
+func New(table string, m metrics.Metrics, sx sql.DB, tm ...tables.TableMigration) *SQLDB{
+    dx := sql.New(m, sx, tm...)
+    return &SQLDB{
+    	SQL: dx,
+        sx: sx,
+        col: table,
+        metrics: m,
+        table: db.TableName{Name: table},
+    }
+}
+
+// Exec provides a function which allows the execution of a custom function against the table.
+func (mdb *SQLDB) Exec(ctx context.Context, fx func(*sql.SQL, sql.DB) error) error {
+    m := metrics.NewTrace("SQLDB.Exec")
+    defer mdb.metrics.Emit(metrics.Info("SQLDB.Exec"),metrics.WithTrace(m.End()))
+
+    if isContextExpired(ctx) {
+        err := fmt.Errorf("Context has expired")
+        mdb.metrics.Emit(metrics.Errorf("Failed to execute operation"),metrics.With("table", mdb.col),metrics.With("error", err.Error()))
+        return err
+    }
+
+    if err := fx(mdb.SQL, mdb.sx); err != nil {
+        mdb.metrics.Emit(metrics.Errorf("Failed to execute operation"),metrics.With("table", mdb.col),metrics.With("error", err.Error()))
+        if err == dsql.ErrNoRows {
+            return ErrNotFound
+        }
+        return err
+    }
+
+    mdb.metrics.Emit(metrics.Info("Operation executed"),metrics.With("table", mdb.col))
+
+    return nil
+}
+
+func isContextExpired(ctx context.Context) bool {
+    select{
+        case <-ctx.Done():
+            return true
+        default:
+            return false
+    }
+}
