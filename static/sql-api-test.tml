@@ -2,8 +2,6 @@
 {{ $ptag := getTag $pfield "sql" "json" }}
 
 var (
-    events = metrics.New(custom.StackDisplay(os.Stdout))
-
     config = sql.Config{
         DBName: os.Getenv("{{.ENVName}}_SQL_TEST_DB"),
         User: os.Getenv("{{.ENVName}}_SQL_TEST_USER"),
@@ -19,6 +17,11 @@ var (
 // TestGet{{.Struct.Object.Name}} validates the retrieval of a {{.Struct.Object.Name}}
 // record from a sqldb.
 func TestGet{{.Struct.Object.Name}}(t *testing.T){
+	events := metrics.New()
+	if testing.Verbose(){
+		events = metrics.New(custom.StackDisplay(os.Stdout))
+	}
+
     api := sqldb.New(testCol, events, sql.NewDB(config, events))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
@@ -47,6 +50,10 @@ func TestGet{{.Struct.Object.Name}}(t *testing.T){
 // TestGetAll{{.Struct.Object.Name}} validates the retrieval of all {{.Struct.Object.Name}}
 // record from a sqldb.
 func TestGetAll{{.Struct.Object.Name}}(t *testing.T){
+	events := metrics.New()
+	if testing.Verbose(){
+		events = metrics.New(custom.StackDisplay(os.Stdout))
+	}
     api := sqldb.New(testCol, events, sql.NewDB(config, events))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
@@ -80,6 +87,10 @@ func TestGetAll{{.Struct.Object.Name}}(t *testing.T){
 // Test{{.Struct.Object.Name}}Create validates the creation of a {{.Struct.Object.Name}}
 // record with a sqldb.
 func Test{{.Struct.Object.Name}}Create(t *testing.T){
+	events := metrics.New()
+	if testing.Verbose(){
+		events = metrics.New(custom.StackDisplay(os.Stdout))
+	}
     api := sqldb.New(testCol, events, sql.NewDB(config, events))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
@@ -102,6 +113,10 @@ func Test{{.Struct.Object.Name}}Create(t *testing.T){
 // Test{{.Struct.Object.Name}}Update validates the update of a {{.Struct.Object.Name}}
 // record with a sqldb.
 func Test{{.Struct.Object.Name}}Update(t *testing.T){
+	events := metrics.New()
+	if testing.Verbose(){
+		events = metrics.New(custom.StackDisplay(os.Stdout))
+	}
     api := sqldb.New(testCol, events, sql.NewDB(config, events))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
@@ -137,6 +152,10 @@ func Test{{.Struct.Object.Name}}Update(t *testing.T){
 // Test{{.Struct.Object.Name}}Delete validates the removal of a {{.Struct.Object.Name}}
 // record from a sqldb.
 func Test{{.Struct.Object.Name}}Delete(t *testing.T){
+	events := metrics.New()
+	if testing.Verbose(){
+		events = metrics.New(custom.StackDisplay(os.Stdout))
+	}
     api := sqldb.New(testCol, events, sql.NewDB(config, events))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
