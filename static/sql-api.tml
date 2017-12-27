@@ -11,6 +11,11 @@ func (m mapFields) Fields() (map[string]interface{}, error) {
     return m, nil
 }
 
+// Validation defines an interface which expose a method to validate a giving type.
+type Validation interface{
+	Validate() error
+}
+
 // {{.Struct.Object.Name}}Fields defines an interface which exposes method to return a map of all
 // attributes associated with the defined structure as decided by the structure.
 type {{.Struct.Object.Name}}Fields  interface {
@@ -83,8 +88,15 @@ func (mdb *{{.Struct.Object.Name}}DB) Create(ctx context.Context, elem {{.Struct
     if isContextExpired(ctx) {
         err := fmt.Errorf("Context has expired")
         mdb.metrics.Emit(metrics.Errorf("Failed to create record"),metrics.With("publicID", elem.PublicID),metrics.With("table", mdb.col),metrics.With("error", err.Error()))
-				return err
+		return err
     }
+
+	if validator, ok := interface{}(elem).(Validation); ok {
+		if err := validator.Validate(); err != nil {
+			mdb.metrics.Emit(metrics.Errorf("Failed to create record: record failed validation"),metrics.With("publicID", elem.PublicID),metrics.With("table", mdb.col),metrics.With("error", err.Error()))
+			return err
+		}
+	}
 
     {{ if (hasFunc .Struct "Fields") }}
         if err := mdb.dx.Save(mdb.table, elem); err != nil {
@@ -249,6 +261,13 @@ func (mdb *{{.Struct.Object.Name}}DB) Update(ctx context.Context, publicID strin
         mdb.metrics.Emit(metrics.Errorf("Failed to finish, context has expired"),metrics.With("table", mdb.col),metrics.With("public_id", publicID),metrics.With("error", err.Error()))
         return err
     }
+
+	if validator, ok := interface{}(elem).(Validation); ok {
+		if err := validator.Validate(); err != nil {
+			mdb.metrics.Emit(metrics.Errorf("Failed to finish, record failed validation"),metrics.With("table", mdb.col),metrics.With("public_id", publicID),metrics.With("error", err.Error()))
+			return err
+		}
+	}
 
     {{ $pfield := fieldByName .Struct "PublicID" }}
     {{ $ptag := getTag $pfield "sql" "json"}}
