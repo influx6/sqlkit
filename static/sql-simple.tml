@@ -27,8 +27,7 @@ func New(table string, m metrics.Metrics, sx sql.DB, tm ...tables.TableMigration
 
 // Exec provides a function which allows the execution of a custom function against the table.
 func (mdb *SQLDB) Exec(ctx context.Context, fx func(*sql.SQL, sql.DB) error) error {
-    m := metrics.NewTrace("SQLDB.Exec")
-    defer mdb.metrics.Emit(metrics.Info("SQLDB.Exec"),metrics.WithTrace(m.End()))
+	defer mdb.metrics.CollectMetrics("{{.Struct.Object.Name}}DB.Exec")
 
     if isContextExpired(ctx) {
         err := fmt.Errorf("Context has expired")
