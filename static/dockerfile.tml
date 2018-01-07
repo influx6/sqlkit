@@ -14,5 +14,6 @@ ENV {{.ENVName}}_SQL_TEST_ADDR 0.0.0.0
 ENV {{.ENVName}}_SQL_TEST_PORT 3306
 ENV {{.ENVName}}_SQL_TEST_Driver mysq
 ENV {{.ENVName}}_SQL_TEST_PASSWORD test_user_pass
+ENV fork true
 
-CMD /bin/sh -c $fork=true bootsql && go test -v ./...
+CMD /bin/sh -c "bootsql && go test -v ./..."
