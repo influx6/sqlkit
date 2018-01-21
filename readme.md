@@ -14,6 +14,10 @@ intricacies of such structs.
 go get -u github.com/gokit/sqlkit
 ```
 
+## Examples
+
+See [Examples](./example) for all usage of provided annotations for code generation with associated results.
+
 ## Annotations
 
 - `@sql`
