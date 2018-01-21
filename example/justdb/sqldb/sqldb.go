@@ -1,7 +1,23 @@
+package sqldb
+
+import (
+	"context"
+
+	"fmt"
+
+	"errors"
+
+	dsql "database/sql"
+
+	"github.com/influx6/faux/metrics"
+
+	"github.com/jmoiron/sqlx"
+)
+
 // errors ...
 var (
-    ErrNotFound = errors.New("record not found")
-    ErrExpiredContext = errors.New("context has expired")
+	ErrNotFound       = errors.New("record not found")
+	ErrExpiredContext = errors.New("context has expired")
 )
 
 //**********************************************************
@@ -10,12 +26,12 @@ var (
 
 // Config is a configuration struct for the DB connection for DBMaker.
 type Config struct {
-	User         string `json:"user"`
+	User     string `json:"user"`
 	Password string `json:"password"`
-	Port       string `json:"port"`
-	Host         string `json:"ip"`
+	Port     string `json:"port"`
+	Host     string `json:"ip"`
 	DB       string `json:"name"`
-	Driver     string `json:"driver"`
+	Driver   string `json:"driver"`
 }
 
 // SqlDB defines an interface which exposes a method to return a new
@@ -70,39 +86,39 @@ func (dl sqlDB) New() (*sqlx.DB, error) {
 func Exec(ctx context.Context, db SqlDB, metrics metrics.Metrics, fx func(*sqlx.DB) error) error {
 	defer metrics.CollectMetrics("DB.Exec")
 
-    if isContextExpired(ctx) {
-        err := ErrExpiredContext
-        metrics.Emit(metrics.Errorf("Failed to execute operation"),metrics.With("error", err.Error()))
-        return err
-    }
-
-    sx, err := db.New()
-    if err != nil {
-        metrics.Emit(metrics.Errorf("Failed to execute operation"),metrics.With("error", err.Error()))
-        if err == dsql.ErrNoRows {
-            return ErrNotFound
-        }
+	if isContextExpired(ctx) {
+		err := ErrExpiredContext
+		metrics.Emit(metrics.Errorf("Failed to execute operation"), metrics.With("error", err.Error()))
 		return err
-    }
+	}
 
-    if err := fx(sx); err != nil {
-        metrics.Emit(metrics.Errorf("Failed to execute operation"),metrics.With("error", err.Error()))
-        if err == dsql.ErrNoRows {
-            return ErrNotFound
-        }
-        return err
-    }
+	sx, err := db.New()
+	if err != nil {
+		metrics.Emit(metrics.Errorf("Failed to execute operation"), metrics.With("error", err.Error()))
+		if err == dsql.ErrNoRows {
+			return ErrNotFound
+		}
+		return err
+	}
 
-    metrics.Emit(metrics.Info("Operation executed"))
+	if err := fx(sx); err != nil {
+		metrics.Emit(metrics.Errorf("Failed to execute operation"), metrics.With("error", err.Error()))
+		if err == dsql.ErrNoRows {
+			return ErrNotFound
+		}
+		return err
+	}
 
-    return nil
+	metrics.Emit(metrics.Info("Operation executed"))
+
+	return nil
 }
 
 func isContextExpired(ctx context.Context) bool {
-    select{
-        case <-ctx.Done():
-            return true
-        default:
-            return false
-    }
+	select {
+	case <-ctx.Done():
+		return true
+	default:
+		return false
+	}
 }

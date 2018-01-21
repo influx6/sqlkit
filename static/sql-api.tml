@@ -112,7 +112,7 @@ func (mdb *{{.Struct.Object.Name}}DB) Create(ctx context.Context, elem {{.Struct
         metrics.With("table", mdb.col),
         metrics.With("elem", elem))
     {{else}}
-        content := mapFields({{ mapFields .CreateAction "elem" "bson" "json" }})
+        content := mapFields({{ mapFields .Struct "elem" "bson" "json" }})
         if err := mdb.dx.Save(mdb.table, content); err != nil {
             mdb.metrics.Emit(metrics.Errorf("Failed to create {{.Struct.Object.Name}} record"),metrics.With("table", mdb.col),metrics.With("query", content),metrics.With("error", err.Error()))
             return err
@@ -275,7 +275,7 @@ func (mdb *{{.Struct.Object.Name}}DB) Update(ctx context.Context, publicID strin
             return err
         }
     {{else}}
-        data := mapFields({{ mapFields .CreateAction "elem" "bson" "json" }})
+        data := mapFields({{ mapFields .Struct "elem" "bson" "json" }})
         if err := mdb.dx.Update(mdb.table, data, "{{$ptag.Value}}", publicID); err != nil {
             mdb.metrics.Emit(metrics.Errorf("Failed to update {{.Struct.Object.Name}} record"),metrics.With("query", elem),metrics.With("table", mdb.col),metrics.With("{{$ptag.Value}}", publicID),metrics.With("error", err.Error()))
             if err == dsql.ErrNoRows {

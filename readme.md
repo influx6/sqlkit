@@ -14,6 +14,17 @@ intricacies of such structs.
 go get -u github.com/gokit/sqlkit
 ```
 
+## Annotations
+
+- `@sql`
+
+Generate SQL package-level methods for interacting with database.
+
+
+- `sqlapi`
+
+Generate API package for interacting with CRUD operations for structs.
+
 ## Usage
 
 Running the following commands instantly generates all necessary files and packages for giving code gen.
@@ -23,6 +34,19 @@ Running the following commands instantly generates all necessary files and packa
 ```
 
 ## How It works
+
+- Generate sql package with package-level functions
+
+
+You annotate any target package with `@sql` which marks giving package has a target for code generation. 
+
+```go
+// @sql
+package users
+```
+
+
+- Generate API with sql as underline db
 
 You annotate any giving struct with `@sqlapi` which marks giving struct has a target for code generation. 
 

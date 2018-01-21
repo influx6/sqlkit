@@ -41,10 +41,8 @@ func SimpleGen(toPackage string, an ast.AnnotationDeclaration, pkgDeclr ast.Pack
 				gen.Import("fmt", ""),
 				gen.Import("errors", ""),
 				gen.Import("database/sql", "dsql"),
-				gen.Import("github.com/influx6/faux/db", ""),
 				gen.Import("github.com/influx6/faux/metrics", ""),
-				gen.Import("github.com/influx6/faux/db/sql", ""),
-				gen.Import("github.com/influx6/faux/db/sql/tables", ""),
+				gen.Import("github.com/jmoiron/sqlx", ""),
 			),
 			gen.Block(
 				gen.SourceTextWith(
