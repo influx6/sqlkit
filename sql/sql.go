@@ -17,7 +17,7 @@ import (
 func SimpleGen(toPackage string, an ast.AnnotationDeclaration, pkgDeclr ast.PackageDeclaration, pkg ast.Package) ([]gen.WriteDirective, error) {
 	sqlReadmeGen := gen.Block(
 		gen.Block(
-			gen.SourceText(
+			gen.SourceText("sqlkit:simpleGen",
 				string(static.MustReadFile("sql-simple-readme.tml", true)),
 				struct {
 					Pkg         *ast.PackageDeclaration
@@ -45,7 +45,7 @@ func SimpleGen(toPackage string, an ast.AnnotationDeclaration, pkgDeclr ast.Pack
 				gen.Import("github.com/jmoiron/sqlx", ""),
 			),
 			gen.Block(
-				gen.SourceTextWith(
+				gen.SourceTextWith("sqlkit:simpleGen",
 					string(static.MustReadFile("sql-simple.tml", true)),
 					gen.ToTemplateFuncs(
 						ast.ASTTemplatFuncs,
@@ -78,8 +78,8 @@ func SimpleGen(toPackage string, an ast.AnnotationDeclaration, pkgDeclr ast.Pack
 	}, nil
 }
 
-// APIGen implements the necessary logic to generated CRUD structures for using a sql based database.
-func APIGen(toPackage string, an ast.AnnotationDeclaration, str ast.StructDeclaration, pkgDeclr ast.PackageDeclaration, pkg ast.Package) ([]gen.WriteDirective, error) {
+// MethodGen implements the necessary logic to generated method for CRUD operations for using a sql based database.
+func MethodGen(toPackage string, an ast.AnnotationDeclaration, str ast.StructDeclaration, pkgDeclr ast.PackageDeclaration, pkg ast.Package) ([]gen.WriteDirective, error) {
 	var hasPublicID bool
 
 	// Validate we have a `PublicID` field.
@@ -128,22 +128,17 @@ func APIGen(toPackage string, an ast.AnnotationDeclaration, str ast.StructDeclar
 				gen.Import("time", ""),
 				gen.Import("testing", ""),
 				gen.Import("context", ""),
-				gen.Import("encoding/json", ""),
-				gen.Import("github.com/influx6/faux/db", ""),
 				gen.Import("github.com/influx6/faux/tests", ""),
-				gen.Import("github.com/influx6/faux/db/sql", ""),
 				gen.Import("github.com/influx6/faux/metrics", ""),
 				gen.Import("github.com/influx6/faux/metrics/custom", ""),
 				gen.Import("github.com/go-sql-driver/mysql", "_"),
-				gen.Import("github.com/lib/pq", "_"),
 				gen.Import("github.com/mattn/go-sqlite3", "_"),
 				gen.Import(packageFinalPath, "sqldb"),
 				gen.Import(packageFinalFixturesPath, "fixtures"),
-				gen.Import(str.Path, ""),
 			),
 			gen.Block(
-				gen.SourceTextWith(
-					string(static.MustReadFile("sql-api-test.tml", true)),
+				gen.SourceTextWith("sqlkit:methodGen",
+					string(static.MustReadFile("sql-functions-test.tml", true)),
 					gen.ToTemplateFuncs(
 						ast.ASTTemplatFuncs,
 						template.FuncMap{
@@ -164,28 +159,9 @@ func APIGen(toPackage string, an ast.AnnotationDeclaration, str ast.StructDeclar
 		),
 	)
 
-	sqlReadmeGen := gen.Block(
-		gen.Block(
-			gen.SourceText(
-				string(static.MustReadFile("sql-api-readme.tml", true)),
-				struct {
-					Pkg         *ast.PackageDeclaration
-					Struct      ast.StructDeclaration
-					PackageName string
-					PackagePath string
-				}{
-					PackagePath: packageFinalPath,
-					PackageName: packageName,
-					Pkg:         &pkgDeclr,
-					Struct:      str,
-				},
-			),
-		),
-	)
-
 	sqlMakefileGen := gen.Block(
 		gen.Block(
-			gen.SourceText(
+			gen.SourceText("sqlkit:methodGen",
 				string(static.MustReadFile("makefile.tml", true)),
 				struct {
 					Pkg         *ast.PackageDeclaration
@@ -206,7 +182,7 @@ func APIGen(toPackage string, an ast.AnnotationDeclaration, str ast.StructDeclar
 
 	sqlDockerfileGen := gen.Block(
 		gen.Block(
-			gen.SourceText(
+			gen.SourceText("sqlkit:methodGen",
 				string(static.MustReadFile("dockerfile.tml", true)),
 				struct {
 					Pkg         *ast.PackageDeclaration
@@ -233,7 +209,7 @@ func APIGen(toPackage string, an ast.AnnotationDeclaration, str ast.StructDeclar
 				gen.Import(str.Path, ""),
 			),
 			gen.Block(
-				gen.SourceTextWith(
+				gen.SourceTextWith("sqlkit:methodGen",
 					string(static.MustReadFile("sql-api-json.tml", true)),
 					template.FuncMap{
 						"map":           ast.MapOutFields,
@@ -254,55 +230,27 @@ func APIGen(toPackage string, an ast.AnnotationDeclaration, str ast.StructDeclar
 		),
 	)
 
-	sqlBackendGen := gen.Block(
-		gen.Package(
-			gen.Name("types"),
-			gen.Imports(
-				gen.Import("context", ""),
-				gen.Import(str.Path, ""),
-			),
-			gen.Block(
-				gen.SourceTextWith(
-					string(static.MustReadFile("sql-api-backend.tml", true)),
-					gen.ToTemplateFuncs(
-						ast.ASTTemplatFuncs,
-						template.FuncMap{
-							"hasFunc": pkgDeclr.HasFunctionFor,
-						},
-					),
-					struct {
-						Pkg    *ast.PackageDeclaration
-						Struct ast.StructDeclaration
-					}{
-						Pkg:    &pkgDeclr,
-						Struct: str,
-					},
-				),
-			),
-		),
-	)
-
 	sqlGen := gen.Block(
-		gen.Commentary(
-			gen.SourceText(`Package `+packageName+` provides a auto-generated package which contains a sql CRUD API for the specific {{.Object.Name}} struct in package {{.Package}}.`, str),
-		),
 		gen.Package(
 			gen.Name(packageName),
 			gen.Imports(
 				gen.Import("context", ""),
 				gen.Import("fmt", ""),
 				gen.Import("errors", ""),
+				gen.Import("time", ""),
+				gen.Import("strconv", ""),
+				gen.Import("strings", ""),
+				gen.Import("encoding/json", ""),
 				gen.Import("database/sql", "dsql"),
 				gen.Import("github.com/jmoiron/sqlx", ""),
 				gen.Import("github.com/influx6/faux/db", ""),
 				gen.Import("github.com/influx6/faux/metrics", ""),
-				gen.Import("github.com/influx6/faux/db/sql", ""),
 				gen.Import("github.com/influx6/faux/db/sql/tables", ""),
 				gen.Import(str.Path, ""),
 			),
 			gen.Block(
-				gen.SourceTextWith(
-					string(static.MustReadFile("sql-api.tml", true)),
+				gen.SourceTextWith("sqlkit:methodGen",
+					string(static.MustReadFile("sql-functions.tml", true)),
 					gen.ToTemplateFuncs(
 						ast.ASTTemplatFuncs,
 						template.FuncMap{
@@ -337,17 +285,6 @@ func APIGen(toPackage string, an ast.AnnotationDeclaration, str ast.StructDeclar
 			Writer:   sqlDockerfileGen,
 			FileName: "test.dockerfile",
 			Dir:      packageName,
-		},
-		{
-			Writer:   sqlReadmeGen,
-			FileName: "README.md",
-			Dir:      packageName,
-		},
-		{
-			Writer:       fmtwriter.New(sqlBackendGen, true, true),
-			FileName:     fmt.Sprintf("%s_backend.go", strings.ToLower(str.Object.Name.Name)),
-			Dir:          "types",
-			DontOverride: true,
 		},
 		{
 			Writer:   fmtwriter.New(sqlGen, true, true),

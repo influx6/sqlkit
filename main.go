@@ -39,8 +39,8 @@ func main() {
 			currentdir = filepath.Join(currentdir, target)
 
 			generators := ast.NewAnnotationRegistryWith(logs)
-			generators.Register("sqlapi", sql.APIGen)
 			generators.Register("sql", sql.SimpleGen)
+			generators.Register("sql_methods", sql.MethodGen)
 
 			res, err := ast.ParseAnnotations(logs, currentdir)
 			if err != nil {

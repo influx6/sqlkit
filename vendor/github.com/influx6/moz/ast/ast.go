@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/icrowley/fake"
-	"github.com/influx6/faux/metrics"
 	"github.com/influx6/gobuild/build"
 	"github.com/influx6/moz/gen"
 )
@@ -145,24 +144,12 @@ type Package struct {
 	Name         string
 	Tag          string
 	Path         string
+	Dir          string
 	FilePath     string
 	Files        []string
 	BuildPkg     *build.Package
 	Packages     []PackageDeclaration
 	TestPackages []PackageDeclaration
-}
-
-// Load calls all internal packages to load their respective imports.
-func (pkg *Package) loadImported(m metrics.Metrics) error {
-	for index, item := range pkg.Packages {
-		if err := item.loadImported(m); err != nil {
-			return err
-		}
-
-		pkg.Packages[index] = item
-	}
-
-	return nil
 }
 
 // HasFunctionFor returns true/false if the giving Struct Declaration has the giving function name.
@@ -407,6 +394,7 @@ func (pkg Package) InterfaceForFile(importPath string, targetFile string, typeNa
 type PackageDeclaration struct {
 	Package          string
 	Path             string
+	Dir              string
 	FilePath         string
 	File             string
 	Source           string
@@ -421,49 +409,6 @@ type PackageDeclaration struct {
 	ObjectFunc       map[*ast.Object][]FuncDeclaration
 	ImportedPackages map[string]Packages
 	importedloaded   bool
-}
-
-// loadImported will attempt to load all available imported package that
-// are not internal to go.
-func (pkg *PackageDeclaration) loadImported(m metrics.Metrics) error {
-	if pkg.importedloaded {
-		return nil
-	}
-
-	pkg.importedloaded = true
-
-	if pkg.ImportedPackages == nil {
-		pkg.ImportedPackages = make(map[string]Packages)
-	}
-
-	for _, imported := range pkg.Imports {
-		if imported.InternalPkg {
-			continue
-		}
-
-		if _, ok := pkg.ImportedPackages[imported.Path]; ok {
-			continue
-		}
-
-		importDir := filepath.Join(goSrcPath, imported.Path)
-		uniqueImportDir := importDir + "#" + imported.Name
-		processedPackages.pl.Lock()
-		if res, ok := processedPackages.pkgs[uniqueImportDir]; ok {
-			processedPackages.pl.Unlock()
-			pkg.ImportedPackages[imported.Path] = Packages{res}
-			continue
-		}
-		processedPackages.pl.Unlock()
-
-		importedPkgs, err := PackageWithBuildCtx(m, importDir, build.Default)
-		if err != nil {
-			return err
-		}
-
-		pkg.ImportedPackages[imported.Path] = importedPkgs
-	}
-
-	return nil
 }
 
 // HasFunctionFor returns true/false if the giving Struct Declaration has the giving function name.
@@ -818,13 +763,51 @@ type InterfaceDeclaration struct {
 	GenObj       *ast.GenDecl
 	Position     token.Pos
 	Declr        *PackageDeclaration
+	methods      []FunctionDefinition
 	Annotations  []AnnotationDeclaration
 	Associations map[string]AnnotationAssociationDeclaration
 }
 
-// Methods returns the associated methods for the giving interface.
-func (i InterfaceDeclaration) Methods(pkg *PackageDeclaration) []FunctionDefinition {
-	return GetInterfaceFunctions(i.Interface, pkg)
+// GetImports returns a map containing all import paths related to
+// types used for the methods of giving interface.
+func (i *InterfaceDeclaration) GetImports(pkg *PackageDeclaration) map[string]string {
+	imports := make(map[string]string, 0)
+
+	methods := i.Methods(pkg)
+	for _, method := range methods {
+		// Retrieve all import paths for arguments.
+		func(args []ArgType) {
+			for _, argument := range args {
+				if argument.Import2.Path != "" {
+					imports[argument.Import2.Path] = argument.Import2.Name
+				}
+				if argument.Import.Path != "" {
+					imports[argument.Import.Path] = argument.Import.Name
+				}
+			}
+		}(method.Args)
+
+		// Retrieve all import paths for returns.
+		func(args []ArgType) {
+			for _, argument := range args {
+				if argument.Import2.Path != "" {
+					imports[argument.Import2.Path] = argument.Import2.Name
+				}
+				if argument.Import.Path != "" {
+					imports[argument.Import.Path] = argument.Import.Name
+				}
+			}
+		}(method.Returns)
+	}
+	return imports
+}
+
+// GetMethods returns the associated methods for the giving interface.
+func (i *InterfaceDeclaration) Methods(pkg *PackageDeclaration) []FunctionDefinition {
+	if len(i.methods) == 0 {
+		i.methods = GetInterfaceFunctions(i.Interface, pkg)
+	}
+	return i.methods
 }
 
 // ArgType defines a type to represent the information for a giving functions argument or
@@ -862,6 +845,126 @@ type FunctionDefinition struct {
 	Func      *ast.FuncType
 	Interface *ast.InterfaceType
 	Struct    *ast.StructType
+}
+
+// TotalReturns returns length of  function return set.
+func (fd FunctionDefinition) TotalReturns() int {
+	return len(fd.Returns)
+}
+
+// TotalArgs returns length of  function arg set.
+func (fd FunctionDefinition) TotalArgs() int {
+	return len(fd.Args)
+}
+
+// HasReturns returns true/false if giving function has return types.
+func (fd FunctionDefinition) HasReturns() bool {
+	return len(fd.Returns) != 0
+}
+
+// HasArgs returns true/false if giving function has aarguments.
+func (fd FunctionDefinition) HasArgs() bool {
+	return len(fd.Args) != 0
+}
+
+// GetReturnsAt gets returns ArgType at index point.
+func (fd FunctionDefinition) GetReturnsAt(i int) ArgType {
+	return fd.Returns[i]
+}
+
+// GetArgsAt gets argument ArgType at index point.
+func (fd FunctionDefinition) GetArgsAt(i int) ArgType {
+	return fd.Returns[i]
+}
+
+// ReturnTypePos returns position of giving type if part of
+// the function's return types else returning -1.
+func (fd FunctionDefinition) ReturnTypePos(wanted string) int {
+	for index, arg := range fd.Returns {
+		if arg.ExType == wanted {
+			return index
+		}
+	}
+	return -1
+}
+
+// ArgTypePos returns position of giving type if part of
+// the function's argument types else returning -1.
+func (fd FunctionDefinition) ArgTypePos(wanted string) int {
+	for index, arg := range fd.Args {
+		if arg.ExType == wanted {
+			return index
+		}
+	}
+	return -1
+}
+
+// CountOfReturnType counts total number of giving type in the returns lists
+// of function.
+func (fd FunctionDefinition) CountOfReturnType(wanted string) int {
+	var count int
+	for _, arg := range fd.Returns {
+		if arg.ExType == wanted {
+			count++
+		}
+	}
+	return count
+}
+
+// CountOfArgType counts total number of giving type in the arguments lists
+// of function.
+func (fd FunctionDefinition) CountOfArgType(wanted string) int {
+	var count int
+	for _, arg := range fd.Args {
+		if arg.ExType == wanted {
+			count++
+		}
+	}
+	return count
+}
+
+// HasNoReturnType returns true/false if giving type is not part of
+// the function's return types.
+func (fd FunctionDefinition) HasNoReturnType(wanted string) bool {
+	for _, arg := range fd.Returns {
+		if arg.ExType == wanted {
+			return false
+		}
+	}
+	return true
+}
+
+// HasNoArgType returns true/false if giving type is part of
+// the function's arguments types.
+func (fd FunctionDefinition) HasNoArgType(wanted string) bool {
+	for _, arg := range fd.Args {
+		if arg.ExType == wanted {
+			return false
+		}
+	}
+	return true
+}
+
+// HasReturnType returns true/false if giving type is part of
+// the function's return types.
+func (fd FunctionDefinition) HasReturnType(wanted string) bool {
+	for _, arg := range fd.Returns {
+		if arg.ExType == wanted {
+			return true
+		}
+	}
+	return false
+}
+
+// HasArgType returns true/false if giving type is part of
+// the function's arguments types.
+func (fd FunctionDefinition) HasArgType(wanted string) bool {
+	for _, arg := range fd.Args {
+		if arg.ExType == wanted {
+			return true
+		}
+	}
+	return false
 }
 
 // ArgumentNamesList returns the assignment names for the function arguments.

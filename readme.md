@@ -22,12 +22,12 @@ See [Examples](./example) for all usage of provided annotations for code generat
 
 - `@sql`
 
-Generate SQL package-level methods for interacting with database.
+Generate SQL package-level methods for interacting with the database.
 
+- `@sql_methods`
 
-- `sqlapi`
+Generate SQL package-level methods for CRUD interacting with the database.
 
-Generate API package for interacting with CRUD operations for structs.
 
 ## Usage
 
@@ -41,7 +41,6 @@ Running the following commands instantly generates all necessary files and packa
 
 - Generate sql package with package-level functions
 
-
 You annotate any target package with `@sql` which marks giving package has a target for code generation. 
 
 ```go
@@ -50,9 +49,9 @@ package users
 ```
 
 
-- Generate API with sql as underline db
+- Generate package-level methods for CRUD with sql as underline db
 
-You annotate any giving struct with `@sqlapi` which marks giving struct has a target for code generation. 
+You annotate any giving struct with `@sql_methods` which marks giving struct has a target for code generation. 
 
 *All struct must have a `PublicID` field.*
 
@@ -60,7 +59,7 @@ Sample below:
 
 ```go
 // User is a type defining the given user related fields for a given.
-//@sqlapi
+//@sql_methods
 type User struct {
 	Username      string    `json:"username"`
 	PublicID      string    `json:"public_id"`
@@ -72,11 +71,19 @@ type User struct {
 }
 ```
 
-SqlKit expects structs to match specific interfaces, which allows it to function as seperate from the declared struct has much has possible, because the interfaces allow to perform serialization and deserialization.
+## Interfaces
 
-Each interface is included with all generated files.
+Sqlkit will generate specific interfaces where each allows the internal functions validate struct validity and are able to get and consume maps containing record details.
 
-Sample interfaces to be implemented for `User` struct:
+
+```go
+type Validate interface{
+	Validate() error
+}
+```
+
+These are required and must be added to target struct as 
+they are the means the generated code uses to get data to be saved and sets internal struct's fields:
 
 ```go
 type UserFields  interface {
@@ -88,35 +95,3 @@ type UserConsumer interface {
 }
 ```
 
-## Customization
-
-If you wish to use a custome name prefix for the config environment variables names generating in the test, then setting 
-a attribute of `ENVName` on the attribute will generate a config in the ff format:
-
-```go
-// @sql(ENVName => BOB)
-```
-
-```go
-    config := mdb.Config{
-        Mode: mgo.Monotonic,
-        DB: os.Getenv("{{.ENVName}}_SQL_TEST_DB"),
-        Host: os.Getenv("{{.ENVName}}_SQL_TEST_HOST"),
-        User: os.Getenv("{{.ENVName}}_SQL_TEST_USER"),
-        AuthDB: os.Getenv("{{.ENVName}}_SQL_TEST_AUTHDB"),
-        Password: os.Getenv("{{.ENVName}}_SQL_TEST_PASSWORD"),
-    }
-```
-
-Will result in:
-
-```go
-    config := mdb.Config{
-        Mode: mgo.Monotonic,
-        DB: os.Getenv("BOB_SQL_TEST_DB"),
-        Host: os.Getenv("BOB_SQL_TEST_HOST"),
-        User: os.Getenv("BOB_SQL_TEST_USER"),
-        AuthDB: os.Getenv("BOB_SQL_TEST_AUTHDB"),
-        Password: os.Getenv("BOB_SQL_TEST_PASSWORD"),
-    }
-```

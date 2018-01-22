@@ -62,7 +62,7 @@ func (dl sqlDB) New() (*sqlx.DB, error) {
 		dl.config.Host = "0.0.0.0"
 	}
 
-	addr := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dl.config.User, dl.config.Password, dl.config.Host, dl.config.Port, dl.config.Name)
+	addr := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dl.config.User, dl.config.Password, dl.config.Host, dl.config.Port, dl.config.DB)
 	db, err := sqlx.Connect(dl.config.Driver, addr)
 	if err != nil {
 		dl.log.Emit(metrics.Error(err), metrics.WithFields(metrics.Field{
@@ -79,37 +79,39 @@ func (dl sqlDB) New() (*sqlx.DB, error) {
 }
 
 //**********************************************************
-// SqlDB Methods
+// SqlDB Functions
 //**********************************************************
 
-// Exec provides a function which allows the execution of a custom function against the table.
-func Exec(ctx context.Context, db SqlDB, metrics metrics.Metrics, fx func(*sqlx.DB) error) error {
-	defer metrics.CollectMetrics("DB.Exec")
+// Exec provides a function which allows the execution of a custom function against a sql db.
+func Exec(ctx context.Context, m metrics.Metrics, db SqlDB, fx func(*sqlx.DB) error) error {
+	defer m.CollectMetrics("DB.Exec")
 
 	if isContextExpired(ctx) {
 		err := ErrExpiredContext
-		metrics.Emit(metrics.Errorf("Failed to execute operation"), metrics.With("error", err.Error()))
+		m.Emit(metrics.Errorf("Failed to execute operation"), metrics.With("error", err.Error()))
 		return err
 	}
 
 	sx, err := db.New()
 	if err != nil {
-		metrics.Emit(metrics.Errorf("Failed to execute operation"), metrics.With("error", err.Error()))
+		m.Emit(metrics.Errorf("Failed to execute operation"), metrics.With("error", err.Error()))
 		if err == dsql.ErrNoRows {
 			return ErrNotFound
 		}
 		return err
 	}
+
+	defer sx.Close()
 
 	if err := fx(sx); err != nil {
-		metrics.Emit(metrics.Errorf("Failed to execute operation"), metrics.With("error", err.Error()))
+		m.Emit(metrics.Errorf("Failed to execute operation"), metrics.With("error", err.Error()))
 		if err == dsql.ErrNoRows {
 			return ErrNotFound
 		}
 		return err
 	}
 
-	metrics.Emit(metrics.Info("Operation executed"))
+	m.Emit(metrics.Info("Operation executed"))
 
 	return nil
 }
