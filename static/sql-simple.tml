@@ -25,23 +25,23 @@ type SqlDB interface {
 }
 
 // NewDB returns a new instance of a DB.
-func NewDB(config Config, metrics metrics.Metrics) SqlDB {
-	return &sqlDB{
+func NewDB(config Config, metrics metrics.Metrics) SqlDBImpl {
+	return &SqlDBImpl{
 		config: config,
 		log:    metrics,
 	}
 }
 
-// sqlDB defines a structure which returns a new db connection for
+// SqlDBImpl defines a structure which returns a new db connection for
 // use in creating new sql db instances for db ops.
-type sqlDB struct {
+type SqlDBImpl struct {
 	config Config
 	log    metrics.Metrics
 }
 
 // New returns a new instance of a sqlx.DB connected to the db with the provided
 // credentials pulled from the host environment.
-func (dl sqlDB) New() (*sqlx.DB, error) {
+func (dl SqlDBImpl) New() (*sqlx.DB, error) {
 	if dl.config.Host == "" {
 		dl.config.Host = "0.0.0.0"
 	}
